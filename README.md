@@ -1,0 +1,205 @@
+# Power Gaming Calculator
+
+D&D 5e attack/damage probability calculator — hit chance, crit chance, and
+hit-adjusted damage (HAD), with advantage/disadvantage, expanded crit
+ranges, and a GWM/Sharpshooter-style power attack breakeven finder. Builds
+can now be saved and re-run against new target ACs without re-entering
+every field.
+
+This is **step 2** of turning the original CLI script into a full app with
+a versioned frontend/backend, a test environment, and a production
+environment on the home lab. See "Project roadmap" below for where this
+fits.
+
+## Structure
+
+```
+powergaming/
+├── backend/
+│   ├── app/
+│   │   ├── calculator.py    # pure math -- ported from the original CLI script
+│   │   ├── service.py       # glue between calculator.py and the API schemas
+│   │   ├── schemas.py       # Pydantic request/response models
+│   │   ├── models.py        # SQLAlchemy ORM models (the `builds` table)
+│   │   ├── db.py            # DB engine/session setup
+│   │   ├── crud.py          # database read/write functions
+│   │   ├── main.py          # FastAPI app, /api/calculate, /api/breakeven
+│   │   └── routers/
+│   │       └── builds.py    # /api/builds CRUD + per-build calculate
+│   ├── alembic/              # database migrations
+│   │   ├── env.py
+│   │   └── versions/
+│   │       └── 0001_create_builds_table.py
+│   ├── alembic.ini
+│   ├── tests/
+│   │   ├── conftest.py           # shared test DB fixture (in-memory SQLite)
+│   │   ├── test_calculator.py    # unit tests on the math
+│   │   ├── test_api.py           # integration tests on /api/calculate, /api/breakeven
+│   │   └── test_builds_api.py    # integration tests on /api/builds
+│   ├── requirements.txt
+│   └── Dockerfile
+├── frontend/                 # placeholder -- built in step 3
+├── docker-compose.yml        # LOCAL DEV ONLY, not the home-lab deployment
+├── .env.example               # copy to .env to override DB credentials locally
+└── .gitignore
+```
+
+`calculator.py` is deliberately dependency-free and I/O-free — it's the
+same logic as the original `PowerGaming.py`, just without the `input()`
+prompts. `service.py` wraps it for the API layer, and both `main.py` and
+`routers/builds.py` call into that shared function instead of duplicating
+the same loop. Keeping the math isolated is what makes it independently
+testable and reusable from two different endpoints.
+
+## Running locally
+
+With Docker (this now also starts a Postgres container and applies
+migrations automatically before the server starts):
+
+```bash
+docker compose up --build
+```
+
+Then hit `http://localhost:8000/health` or open `http://localhost:8000/docs`
+for the interactive Swagger UI FastAPI generates automatically.
+
+Without Docker, you'll need your own Postgres running and a `DATABASE_URL`
+environment variable pointing at it, then:
+
+```bash
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+alembic upgrade head
+uvicorn app.main:app --reload
+```
+
+### Making a schema change later
+
+Edit `app/models.py`, then generate a new migration and apply it:
+
+```bash
+cd backend
+alembic revision --autogenerate -m "describe the change"
+alembic upgrade head
+```
+
+Always read the auto-generated migration file before running it --
+autogenerate is a good first draft, not a guarantee, especially for
+renames or data migrations.
+
+## Running tests
+
+Tests use an in-memory SQLite database (see `tests/conftest.py`), so they
+don't need a real Postgres running:
+
+```bash
+cd backend
+pip install -r requirements.txt
+pytest -v
+```
+
+## API
+
+### `POST /api/calculate`
+
+Computes hit chance, crit chance, and HAD for one attack profile across a
+list of target ACs. Set `power_attack: true` to also get the power-attack
+(GWM/Sharpshooter-style) numbers for comparison at each AC.
+
+```json
+{
+  "attack_bonus": 8,
+  "ac_list": [12, 15, 18],
+  "num_dice": 1,
+  "die_sides": 12,
+  "modifier": 3,
+  "num_attacks": 2,
+  "advantage": false,
+  "disadvantage": false,
+  "crit_range": 20,
+  "power_attack": true,
+  "power_attack_bonus": 10,
+  "power_attack_penalty": -5
+}
+```
+
+### `POST /api/breakeven`
+
+Scans AC 1-30 (or a narrower range via `ac_min`/`ac_max`) and returns the
+normal vs. power-attack HAD at each AC, plus the AC(s) where the better
+option switches.
+
+```json
+{
+  "attack_bonus": 8,
+  "num_dice": 1,
+  "die_sides": 12,
+  "modifier": 3,
+  "power_attack_bonus": 10,
+  "power_attack_penalty": -5
+}
+```
+
+### `GET /health`
+
+Basic liveness check.
+
+### `POST /api/builds`
+
+Save an attack profile. Body is the same shape as `/api/calculate` minus
+`ac_list`, plus a `name`. Returns the saved build including its `id`.
+
+### `GET /api/builds`
+
+List all saved builds.
+
+### `GET /api/builds/{id}`
+
+Fetch one saved build. `404` if it doesn't exist.
+
+### `PATCH /api/builds/{id}`
+
+Partially update a saved build -- send only the fields you want to change.
+
+### `DELETE /api/builds/{id}`
+
+Delete a saved build. Returns `204 No Content`.
+
+### `POST /api/builds/{id}/calculate`
+
+Run a saved build's stored attack profile against a list of ACs, without
+re-sending the whole profile:
+
+```json
+{ "ac_list": [12, 15, 18] }
+```
+
+Response shape is identical to `/api/calculate`.
+
+## Project roadmap
+
+1. ~~Backend API wrapping the existing logic~~ -- done.
+2. **Postgres + Alembic migrations, saved builds** -- this step.
+3. Add the frontend (React + TypeScript + Vite).
+4. Full pytest suite (already well underway).
+5. GitHub Actions CI -- lint/test/build on every push.
+6. Stand up a `powergaming-test` stack on the home lab (Proxmox →
+   docker-host VM), CD from the `develop` branch.
+7. Stand up `powergaming-prod`, CD from `main`/version tags.
+
+## Notes for later steps
+
+- CORS in `main.py` is wide open (`allow_origins=["*"]`) for local dev.
+  Tighten this to the real frontend origin(s) once step 3's frontend has a
+  home-lab URL.
+- `requirements.txt` mixes runtime and test dependencies for now — fine at
+  this size, worth splitting into `requirements-dev.txt` if it grows.
+- No auth yet on the `/api/builds` endpoints -- anyone who can reach the
+  API can read/edit/delete any build. Fine while this only runs on your
+  LAN; worth revisiting before it's reachable from outside the home lab.
+- `docker-compose.yml`'s `command:` runs `alembic upgrade head` on every
+  container start, which is convenient for local dev but is a pattern
+  worth reconsidering for the prod stack later (you may prefer migrations
+  as an explicit, deliberate step rather than something that just happens
+  on every restart).

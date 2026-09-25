@@ -1,0 +1,48 @@
+# Local development compose file. This is NOT the home-lab deployment
+# stack -- that lives in the separate `homelab` repo, following the
+# powergaming-test / powergaming-prod split described in the project plan.
+# This file is just for running the API + database on your own machine
+# while developing.
+#
+# Set POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB in a .env file next
+# to this one (see .env.example) if you want to override the defaults.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-powergaming}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-powergaming}
+      - POSTGRES_DB=${POSTGRES_DB:-powergaming}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-powergaming}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/tests:/app/tests
+      - ./backend/alembic:/app/alembic
+      - ./backend/alembic.ini:/app/alembic.ini
+    environment:
+      - ENV=development
+      - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER:-powergaming}:${POSTGRES_PASSWORD:-powergaming}@db:5432/${POSTGRES_DB:-powergaming}
+    depends_on:
+      db:
+        condition: service_healthy
+    # Applies any new migrations, then starts the dev server. This is the
+    # same "migrate, then start" pattern real deployments use -- just
+    # running by hand here instead of via a separate CD step.
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+volumes:
+  pgdata:
