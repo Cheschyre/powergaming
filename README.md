@@ -3,10 +3,10 @@
 D&D 5e attack/damage probability calculator — hit chance, crit chance, and
 hit-adjusted damage (HAD), with advantage/disadvantage, expanded crit
 ranges, and a GWM/Sharpshooter-style power attack breakeven finder. Builds
-can now be saved and re-run against new target ACs without re-entering
-every field.
+can be saved and re-run against new target ACs without re-entering every
+field, and there's now a browser UI on top of the API.
 
-This is **step 2** of turning the original CLI script into a full app with
+This is **step 3** of turning the original CLI script into a full app with
 a versioned frontend/backend, a test environment, and a production
 environment on the home lab. See "Project roadmap" below for where this
 fits.
@@ -38,7 +38,14 @@ powergaming/
 │   │   └── test_builds_api.py    # integration tests on /api/builds
 │   ├── requirements.txt
 │   └── Dockerfile
-├── frontend/                 # placeholder -- built in step 3
+├── frontend/
+│   ├── src/
+│   │   ├── types.ts           # TS mirrors of backend/app/schemas.py
+│   │   ├── api.ts             # fetch wrapper, one function per endpoint
+│   │   ├── App.tsx            # tab switcher
+│   │   └── components/        # CalculatorPanel, BreakevenPanel, BuildsPanel, ...
+│   ├── vite.config.ts
+│   └── package.json
 ├── docker-compose.yml        # LOCAL DEV ONLY, not the home-lab deployment
 ├── .env.example               # copy to .env to override DB credentials locally
 └── .gitignore
@@ -73,6 +80,19 @@ pip install -r requirements.txt
 alembic upgrade head
 uvicorn app.main:app --reload
 ```
+
+### Frontend
+
+In a separate terminal, with the backend already running:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Opens on `http://localhost:5173` and talks to the API on `:8000`. See
+`frontend/README.md` for more detail.
 
 ### Making a schema change later
 
@@ -180,19 +200,29 @@ Response shape is identical to `/api/calculate`.
 ## Project roadmap
 
 1. ~~Backend API wrapping the existing logic~~ -- done.
-2. **Postgres + Alembic migrations, saved builds** -- this step.
-3. Add the frontend (React + TypeScript + Vite).
-4. Full pytest suite (already well underway).
-5. GitHub Actions CI -- lint/test/build on every push.
+2. ~~Postgres + Alembic migrations, saved builds~~ -- done.
+3. **Frontend (React + TypeScript + Vite)** -- this step.
+4. Full pytest suite (already well underway; frontend has no tests yet --
+   worth adding once the UI settles).
+5. GitHub Actions CI -- lint/test/build on every push, both backend and
+   frontend.
 6. Stand up a `powergaming-test` stack on the home lab (Proxmox →
-   docker-host VM), CD from the `develop` branch.
+   docker-host VM), CD from the `develop` branch. This is also where the
+   frontend needs an actual deployment story -- it only runs via `npm run
+   dev` right now.
 7. Stand up `powergaming-prod`, CD from `main`/version tags.
 
 ## Notes for later steps
 
 - CORS in `main.py` is wide open (`allow_origins=["*"]`) for local dev.
-  Tighten this to the real frontend origin(s) once step 3's frontend has a
-  home-lab URL.
+  Tighten this to the real frontend origin(s) once there's a home-lab URL
+  for it.
+- `frontend/src/types.ts` is hand-maintained to match
+  `backend/app/schemas.py`. Fine at this size; if the API grows a lot,
+  consider generating it from FastAPI's `/openapi.json` instead.
+- The frontend has no build/deploy story yet -- `npm run build` produces a
+  static `dist/` folder, but nothing serves it outside of `npm run dev`.
+  That's part of steps 6-7.
 - `requirements.txt` mixes runtime and test dependencies for now — fine at
   this size, worth splitting into `requirements-dev.txt` if it grows.
 - No auth yet on the `/api/builds` endpoints -- anyone who can reach the
