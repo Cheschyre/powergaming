@@ -102,6 +102,6 @@ home-lab test stack.)
 
 ```bash
 ssh cheschyre@100.104.100.109 'cd /opt/powergaming-test && docker compose ps'
-curl http://100.104.100.109:8080/          # frontend
+curl http://100.104.100.109:8081/          # frontend
 curl http://100.104.100.109:8001/health    # backend
 ```
