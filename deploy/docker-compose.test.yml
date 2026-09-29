@@ -41,7 +41,7 @@ services:
       # Direct access for /docs and debugging. The frontend doesn't use
       # this -- it talks to the api container over the compose network
       # via nginx's /api/ proxy (see frontend/nginx.conf).
-      - "8001:8000"
+      - "${API_PORT:-8001}:8000"
 
   web:
     image: ghcr.io/cheschyre/powergaming-frontend:${TAG:-develop}
@@ -49,7 +49,7 @@ services:
     depends_on:
       - api
     ports:
-      - "8080:80"
+      - "${WEB_PORT:-8080}:80"
 
 volumes:
   pgdata:
