@@ -86,9 +86,16 @@ jobs:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci
-          # Fail here (not as a confusing SSH timeout later) if the
-          # runner can't actually reach docker-host over the tailnet.
-          targets: ${{ secrets.DEPLOY_HOST }}
+
+      # The action exits 0 even when every `tailscale up` retry fails,
+      # so check reachability ourselves -- fails here instead of as a
+      # confusing SSH timeout. (Not the action's own `targets` check:
+      # it fails whenever the path is DERP-relayed rather than direct,
+      # which is normal for a home lab behind NAT.)
+      - name: Check docker-host is reachable over the tailnet
+        run: sudo tailscale ping --until-direct=false --c=10 "$DEPLOY_HOST"
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
 
       - name: Pull and restart the stack over SSH
         uses: appleboy/ssh-action@v1.2.0
