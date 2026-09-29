@@ -50,7 +50,12 @@ powergaming/
 │   └── package.json
 ├── .github/
 │   └── workflows/
-│       └── ci.yml             # runs backend tests + frontend build on every push
+│       ├── ci.yml             # runs backend tests + frontend build on every push
+│       └── cd-test.yml        # builds/pushes images + deploys powergaming-test on push to develop
+├── deploy/
+│   ├── docker-compose.test.yml   # the actual powergaming-test stack (pulls images, no bind mounts)
+│   ├── .env.example
+│   └── README.md              # one-time setup for step 6 (VM, secrets, Tailscale)
 ├── docker-compose.yml        # LOCAL DEV ONLY, not the home-lab deployment
 ├── .env.example               # copy to .env to override DB credentials locally
 └── .gitignore
@@ -213,28 +218,38 @@ Response shape is identical to `/api/calculate`.
    frontend type-check + build on every push and PR, to every branch.
    Doesn't yet run a linter (ruff/ESLint) -- worth adding once CI itself
    is trusted and green.
-6. Stand up a `powergaming-test` stack on the home lab (Proxmox →
-   docker-host VM), CD from the `develop` branch. This is also where the
-   frontend needs an actual deployment story -- it only runs via `npm run
-   dev` right now. This is also the natural point to make CI *deploy*
-   (build + push a Docker image, then trigger the home-lab stack to pull
-   it) rather than just check.
-7. Stand up `powergaming-prod`, CD from `main`/version tags.
+6. ~~Stand up a `powergaming-test` stack on the home lab~~ -- workflow
+   and compose file done (`.github/workflows/cd-test.yml`,
+   `deploy/docker-compose.test.yml`); the frontend now has a real
+   Dockerfile (Vite build served by nginx, proxying `/api/*` to the
+   backend container) instead of only running via `npm run dev`. Needs
+   the one-time setup in `deploy/README.md` completed (GitHub secrets,
+   Tailscale OAuth client, copying the compose file to the VM, making
+   the GHCR packages public) before the first deploy will actually
+   succeed -- untested end-to-end until then.
+7. Stand up `powergaming-prod`, CD from `main`/version tags. Can likely
+   reuse most of step 6's workflow with a `cd-prod.yml` variant once
+   `powergaming-test` is proven out.
 
 ## Notes for later steps
 
-- CI (`.github/workflows/ci.yml`) checks the code but doesn't deploy
-  anything yet -- that's wired up in steps 6-7, once there's a home-lab
-  target for it to push to.
-- CORS in `main.py` is wide open (`allow_origins=["*"]`) for local dev.
-  Tighten this to the real frontend origin(s) once there's a home-lab URL
-  for it.
+- CI (`.github/workflows/ci.yml`) checks the code; CD
+  (`.github/workflows/cd-test.yml`) builds, pushes, and deploys it to
+  `powergaming-test` on push to `develop`. `powergaming-prod` (step 7)
+  still needs its own equivalent, gated on `main`/version tags.
+- CORS in `main.py` is wide open (`allow_origins=["*"]`). Harmless for
+  `powergaming-test` since the frontend talks to the backend through
+  nginx's same-origin `/api/*` proxy (see `frontend/nginx.conf`), not
+  cross-origin -- but still worth tightening before anything reaches
+  further than the home lab.
 - `frontend/src/types.ts` is hand-maintained to match
   `backend/app/schemas.py`. Fine at this size; if the API grows a lot,
   consider generating it from FastAPI's `/openapi.json` instead.
-- The frontend has no build/deploy story yet -- `npm run build` produces a
-  static `dist/` folder, but nothing serves it outside of `npm run dev`.
-  That's part of steps 6-7.
+- The `deploy/docker-compose.test.yml` file has to be copied to the VM
+  by hand when it changes (see `deploy/README.md`) -- the CD workflow
+  only re-pulls images and restarts, it doesn't re-sync the compose
+  file itself. Worth automating (e.g. `scp` it as part of the deploy
+  step, or a shallow `git pull` on the VM) once this is proven stable.
 - `requirements.txt` mixes runtime and test dependencies for now — fine at
   this size, worth splitting into `requirements-dev.txt` if it grows.
 - No auth yet on the `/api/builds` endpoints -- anyone who can reach the

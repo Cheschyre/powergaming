@@ -1,0 +1,55 @@
+# powergaming-test deploy stack.
+#
+# This lives on the docker-host VM at /opt/powergaming-test (see
+# deploy/README.md for one-time setup), and is what the CD workflow
+# (.github/workflows/cd-test.yml) pulls and restarts on every push to
+# `develop`.
+#
+# Unlike the root docker-compose.yml (local dev -- builds from source,
+# bind-mounts the code, hot-reloads), this pulls pre-built images from
+# GHCR that CI already built and pushed, and runs them as they'll
+# actually run in production. Needs a .env file next to it on the VM --
+# see .env.example in this directory.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: ghcr.io/cheschyre/powergaming-backend:${TAG:-develop}
+    restart: unless-stopped
+    environment:
+      - ENV=test
+      - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      # Direct access for /docs and debugging. The frontend doesn't use
+      # this -- it talks to the api container over the compose network
+      # via nginx's /api/ proxy (see frontend/nginx.conf).
+      - "8001:8000"
+
+  web:
+    image: ghcr.io/cheschyre/powergaming-frontend:${TAG:-develop}
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+
+volumes:
+  pgdata:
