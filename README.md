@@ -1,12 +1,14 @@
 # Power Gaming Calculator
 
+![CI](https://github.com/Cheschyre/powergaming/actions/workflows/ci.yml/badge.svg)
+
 D&D 5e attack/damage probability calculator — hit chance, crit chance, and
 hit-adjusted damage (HAD), with advantage/disadvantage, expanded crit
 ranges, and a GWM/Sharpshooter-style power attack breakeven finder. Builds
 can be saved and re-run against new target ACs without re-entering every
 field, and there's now a browser UI on top of the API.
 
-This is **step 3** of turning the original CLI script into a full app with
+This is **step 5** of turning the original CLI script into a full app with
 a versioned frontend/backend, a test environment, and a production
 environment on the home lab. See "Project roadmap" below for where this
 fits.
@@ -46,6 +48,9 @@ powergaming/
 │   │   └── components/        # CalculatorPanel, BreakevenPanel, BuildsPanel, ...
 │   ├── vite.config.ts
 │   └── package.json
+├── .github/
+│   └── workflows/
+│       └── ci.yml             # runs backend tests + frontend build on every push
 ├── docker-compose.yml        # LOCAL DEV ONLY, not the home-lab deployment
 ├── .env.example               # copy to .env to override DB credentials locally
 └── .gitignore
@@ -201,19 +206,26 @@ Response shape is identical to `/api/calculate`.
 
 1. ~~Backend API wrapping the existing logic~~ -- done.
 2. ~~Postgres + Alembic migrations, saved builds~~ -- done.
-3. **Frontend (React + TypeScript + Vite)** -- this step.
-4. Full pytest suite (already well underway; frontend has no tests yet --
-   worth adding once the UI settles).
-5. GitHub Actions CI -- lint/test/build on every push, both backend and
-   frontend.
+3. ~~Frontend (React + TypeScript + Vite)~~ -- done.
+4. Full pytest suite -- backend well underway; frontend has no tests yet,
+   worth adding once the UI settles.
+5. **GitHub Actions CI** -- this step. Runs backend `pytest` and a
+   frontend type-check + build on every push and PR, to every branch.
+   Doesn't yet run a linter (ruff/ESLint) -- worth adding once CI itself
+   is trusted and green.
 6. Stand up a `powergaming-test` stack on the home lab (Proxmox →
    docker-host VM), CD from the `develop` branch. This is also where the
    frontend needs an actual deployment story -- it only runs via `npm run
-   dev` right now.
+   dev` right now. This is also the natural point to make CI *deploy*
+   (build + push a Docker image, then trigger the home-lab stack to pull
+   it) rather than just check.
 7. Stand up `powergaming-prod`, CD from `main`/version tags.
 
 ## Notes for later steps
 
+- CI (`.github/workflows/ci.yml`) checks the code but doesn't deploy
+  anything yet -- that's wired up in steps 6-7, once there's a home-lab
+  target for it to push to.
 - CORS in `main.py` is wide open (`allow_origins=["*"]`) for local dev.
   Tighten this to the real frontend origin(s) once there's a home-lab URL
   for it.
