@@ -86,6 +86,9 @@ jobs:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci
+          # Fail here (not as a confusing SSH timeout later) if the
+          # runner can't actually reach docker-host over the tailnet.
+          ping: ${{ secrets.DEPLOY_HOST }}
 
       - name: Pull and restart the stack over SSH
         uses: appleboy/ssh-action@v1.2.0
