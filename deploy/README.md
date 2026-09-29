@@ -10,15 +10,22 @@ push to `develop` redeploys automatically via
 push to develop
   -> CI builds backend + frontend images, pushes to GHCR
   -> GitHub Actions runner joins the tailnet (Tailscale OAuth client, tag:ci)
-  -> SSHes into docker-host as the `deploy` user
-  -> docker compose pull && up -d   (in /opt/powergaming-test)
+  -> scp's deploy/docker-compose.test.yml to docker-host as the `deploy` user
+  -> validates it, installs it as docker-compose.yml, then
+     docker compose pull && up -d   (in /opt/powergaming-test)
 ```
 
-The compose file itself (`docker-compose.test.yml`) lives in this repo
-and is copied to the VM once, by hand, in step 2 below. The workflow
-doesn't re-copy it on every deploy -- if you change it, re-copy it (step
-2) by hand, or say so and this can be automated later (e.g. `scp` it
-into the deploy step, or have the VM `git pull` a shallow clone).
+The compose file lives only in this repo: every deploy uploads the
+commit's `docker-compose.test.yml`, checks it with `docker compose
+config` against the VM's real `.env`, and only then replaces the live
+`docker-compose.yml`. Edit it here and push -- never on the VM, since
+the next deploy overwrites it. The one file that stays VM-only is
+`.env` (step 2).
+
+The workflow also pins docker-host's SSH host key
+(`HOST_KEY_FINGERPRINT` in `cd-test.yml`). If the VM is rebuilt, deploys
+fail with "docker-host host key is ..., expected ..." -- update the
+fingerprint from `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`.
 
 ## 1. Deploy user + SSH key (done)
 
@@ -26,15 +33,14 @@ A `deploy` user (in the `docker` group) already exists on `docker-host`
 with the CI keypair's public half in its `authorized_keys`. Nothing to
 redo here unless the key needs rotating.
 
-## 2. Copy the stack to the VM
+## 2. Prepare the stack directory on the VM
 
 Run once, from a machine that can already SSH into `docker-host`
-(replace the host below if it's not on the tailnet you're using):
+(replace the host below if it's not on the tailnet you're using). The
+compose file itself is uploaded by CI on every deploy:
 
 ```bash
 ssh cheschyre@100.104.100.109 'sudo mkdir -p /opt/powergaming-test && sudo chown deploy:deploy /opt/powergaming-test'
-scp docker-compose.test.yml cheschyre@100.104.100.109:/tmp/docker-compose.yml
-ssh cheschyre@100.104.100.109 'sudo mv /tmp/docker-compose.yml /opt/powergaming-test/docker-compose.yml && sudo chown deploy:deploy /opt/powergaming-test/docker-compose.yml'
 ```
 
 Then create the real `.env` (never committed -- see `.env.example` in

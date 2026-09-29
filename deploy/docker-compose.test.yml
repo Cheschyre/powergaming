@@ -1,9 +1,9 @@
 # powergaming-test deploy stack.
 #
-# This lives on the docker-host VM at /opt/powergaming-test (see
-# deploy/README.md for one-time setup), and is what the CD workflow
-# (.github/workflows/cd-test.yml) pulls and restarts on every push to
-# `develop`.
+# The CD workflow (.github/workflows/cd-test.yml) uploads this file to
+# the docker-host VM as /opt/powergaming-test/docker-compose.yml on every
+# push to `develop`, then pulls and restarts it -- edit it here, not on
+# the VM. See deploy/README.md for the one-time setup.
 #
 # Unlike the root docker-compose.yml (local dev -- builds from source,
 # bind-mounts the code, hot-reloads), this pulls pre-built images from

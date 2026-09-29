@@ -4,7 +4,7 @@ name: CD - test
 # GHCR, then SSH into the home-lab docker-host VM (over Tailscale) and
 # redeploy the powergaming-test stack from them.
 #
-# Reuses the deploy_ssh_key/deploy_host/deploy_user set up in
+# Uses the DEPLOY_SSH_KEY/DEPLOY_HOST/DEPLOY_USER secrets set up in
 # deploy/README.md, plus a Tailscale OAuth client scoped to a `tag:ci`
 # ACL tag -- see that README for the one-time setup this depends on.
 
@@ -97,15 +97,45 @@ jobs:
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
 
-      - name: Pull and restart the stack over SSH
-        uses: appleboy/ssh-action@v1.2.0
+      - uses: actions/checkout@v4
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: |
-            set -euo pipefail
-            cd /opt/powergaming-test
-            docker compose pull
-            docker compose up -d --remove-orphans
-            docker image prune -f
+          sparse-checkout: deploy
+
+      - name: Set up SSH (key + pinned docker-host host key)
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          # docker-host's sshd ED25519 key. Check with
+          # `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` on the VM;
+          # update here if the VM is ever rebuilt.
+          HOST_KEY_FINGERPRINT: SHA256:q/lNhlNlifpMK9o/CWkHF9qk6FUvizdZI4PVydjcfbg
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -t ed25519 "$DEPLOY_HOST" 2>/dev/null > host_key
+          got=$(ssh-keygen -lf host_key | awk '{print $2}')
+          if [ "$got" != "$HOST_KEY_FINGERPRINT" ]; then
+            echo "::error::docker-host host key is $got, expected $HOST_KEY_FINGERPRINT"
+            exit 1
+          fi
+          cat host_key >> ~/.ssh/known_hosts
+
+      # Ships the compose file from this commit, so changes to
+      # deploy/docker-compose.test.yml deploy themselves. It's validated
+      # on the VM (against the real .env) before replacing the live one.
+      - name: Upload compose file, pull and restart the stack
+        env:
+          TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
+        run: |
+          scp -o BatchMode=yes deploy/docker-compose.test.yml \
+            "$TARGET:/opt/powergaming-test/docker-compose.yml.new"
+          ssh -o BatchMode=yes "$TARGET" bash -s <<'EOF'
+          set -euo pipefail
+          cd /opt/powergaming-test
+          docker compose -f docker-compose.yml.new config -q
+          mv docker-compose.yml.new docker-compose.yml
+          docker compose pull
+          docker compose up -d --remove-orphans
+          docker image prune -f
+          EOF
