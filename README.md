@@ -8,10 +8,10 @@ ranges, and a GWM/Sharpshooter-style power attack breakeven finder. Builds
 can be saved and re-run against new target ACs without re-entering every
 field, and there's now a browser UI on top of the API.
 
-This is **step 7** of turning the original CLI script into a full app with
-a versioned frontend/backend, a test environment, and a production
-environment on the home lab. See "Project roadmap" below for where this
-fits.
+The original CLI script is now a full app with a versioned
+frontend/backend, a test environment, and a production environment on
+the home lab (steps 1-3 and 5-7 of the roadmap below are done; step 4's
+test suite is ongoing).
 
 ## Structure
 
@@ -216,7 +216,7 @@ Response shape is identical to `/api/calculate`.
 3. ~~Frontend (React + TypeScript + Vite)~~ -- done.
 4. Full pytest suite -- backend well underway; frontend has no tests yet,
    worth adding once the UI settles.
-5. **GitHub Actions CI** -- this step. Runs backend `pytest` and a
+5. ~~GitHub Actions CI~~ -- done. Runs backend `pytest` and a
    frontend type-check + build on every push and PR, to every branch.
    Doesn't yet run a linter (ruff/ESLint) -- worth adding once CI itself
    is trusted and green.
@@ -227,14 +227,14 @@ Response shape is identical to `/api/calculate`.
    (http://100.104.100.109:8081, API on `:8001`). The frontend has a real
    Dockerfile (Vite build served by nginx, proxying `/api/*` to the
    backend container).
-7. **Stand up `powergaming-prod`** -- this step. Same docker-host, same
-   compose file, separate directory/volume/ports
-   (`/opt/powergaming-prod`, `:8082`/`:8002`). The pipeline is now the
-   reusable `deploy-stack.yml`; `cd-prod.yml` runs it for version tags
-   (`v1.2.3`) on `main`, behind a `production` GitHub Environment that
-   can require your approval. Needs step 6 of `deploy/README.md` (prod
-   `.env`, optional approval gate) done, then a develop -> main merge and
-   a first tag.
+7. ~~Stand up `powergaming-prod`~~ -- done and verified end-to-end with
+   the first release, `v0.1.0`. Same docker-host and compose file as
+   test, but its own directory, database volume and ports
+   (`/opt/powergaming-prod`, http://100.104.100.109:8082, API on
+   `:8002`). Both stacks deploy through the reusable `deploy-stack.yml`;
+   `cd-prod.yml` runs it for version tags (`v1.2.3`) on `main`, and the
+   deploy waits for approval in the `production` GitHub Environment. See
+   "Releasing to prod" in `deploy/README.md`.
 
 ## Notes for later steps
 
