@@ -8,7 +8,7 @@ ranges, and a GWM/Sharpshooter-style power attack breakeven finder. Builds
 can be saved and re-run against new target ACs without re-entering every
 field, and there's now a browser UI on top of the API.
 
-This is **step 5** of turning the original CLI script into a full app with
+This is **step 7** of turning the original CLI script into a full app with
 a versioned frontend/backend, a test environment, and a production
 environment on the home lab. See "Project roadmap" below for where this
 fits.
@@ -50,7 +50,14 @@ powergaming/
 │   └── package.json
 ├── .github/
 │   └── workflows/
-│       └── ci.yml             # runs backend tests + frontend build on every push
+│       ├── ci.yml             # runs backend tests + frontend build on every push
+│       ├── deploy-stack.yml   # reusable: build/push images + deploy one stack to docker-host
+│       ├── cd-test.yml        # push to develop -> powergaming-test
+│       └── cd-prod.yml        # version tag on main -> powergaming-prod
+├── deploy/
+│   ├── docker-compose.yml     # the home-lab stack, shared by test and prod (pulls images, no bind mounts)
+│   ├── .env.example           # template for each stack's .env on the VM
+│   └── README.md              # releasing, rollback, and one-time setup (VM, secrets, Tailscale)
 ├── docker-compose.yml        # LOCAL DEV ONLY, not the home-lab deployment
 ├── .env.example               # copy to .env to override DB credentials locally
 └── .gitignore
@@ -213,35 +220,45 @@ Response shape is identical to `/api/calculate`.
    frontend type-check + build on every push and PR, to every branch.
    Doesn't yet run a linter (ruff/ESLint) -- worth adding once CI itself
    is trusted and green.
-6. Stand up a `powergaming-test` stack on the home lab (Proxmox →
-   docker-host VM), CD from the `develop` branch. This is also where the
-   frontend needs an actual deployment story -- it only runs via `npm run
-   dev` right now. This is also the natural point to make CI *deploy*
-   (build + push a Docker image, then trigger the home-lab stack to pull
-   it) rather than just check.
-7. Stand up `powergaming-prod`, CD from `main`/version tags.
+6. ~~Stand up a `powergaming-test` stack on the home lab~~ -- done and
+   verified end-to-end. Every push to `develop` builds `:develop` images,
+   pushes them to GHCR, joins the tailnet, uploads the compose file and
+   redeploys `/opt/powergaming-test` on docker-host
+   (http://100.104.100.109:8081, API on `:8001`). The frontend has a real
+   Dockerfile (Vite build served by nginx, proxying `/api/*` to the
+   backend container).
+7. **Stand up `powergaming-prod`** -- this step. Same docker-host, same
+   compose file, separate directory/volume/ports
+   (`/opt/powergaming-prod`, `:8082`/`:8002`). The pipeline is now the
+   reusable `deploy-stack.yml`; `cd-prod.yml` runs it for version tags
+   (`v1.2.3`) on `main`, behind a `production` GitHub Environment that
+   can require your approval. Needs step 6 of `deploy/README.md` (prod
+   `.env`, optional approval gate) done, then a develop -> main merge and
+   a first tag.
 
 ## Notes for later steps
 
-- CI (`.github/workflows/ci.yml`) checks the code but doesn't deploy
-  anything yet -- that's wired up in steps 6-7, once there's a home-lab
-  target for it to push to.
-- CORS in `main.py` is wide open (`allow_origins=["*"]`) for local dev.
-  Tighten this to the real frontend origin(s) once there's a home-lab URL
-  for it.
+- CI (`.github/workflows/ci.yml`) checks the code; CD
+  (`cd-test.yml` / `cd-prod.yml`, both via `deploy-stack.yml`) builds,
+  pushes, and deploys it -- to `powergaming-test` on push to `develop`,
+  to `powergaming-prod` on a version tag on `main`. Prod rebuilds images
+  from the tag rather than promoting the exact `:develop` images test
+  ran; worth switching to promotion if test and prod ever drift.
+- CORS in `main.py` is wide open (`allow_origins=["*"]`). Harmless for
+  `powergaming-test` since the frontend talks to the backend through
+  nginx's same-origin `/api/*` proxy (see `frontend/nginx.conf`), not
+  cross-origin -- but still worth tightening before anything reaches
+  further than the home lab.
 - `frontend/src/types.ts` is hand-maintained to match
   `backend/app/schemas.py`. Fine at this size; if the API grows a lot,
   consider generating it from FastAPI's `/openapi.json` instead.
-- The frontend has no build/deploy story yet -- `npm run build` produces a
-  static `dist/` folder, but nothing serves it outside of `npm run dev`.
-  That's part of steps 6-7.
 - `requirements.txt` mixes runtime and test dependencies for now — fine at
   this size, worth splitting into `requirements-dev.txt` if it grows.
 - No auth yet on the `/api/builds` endpoints -- anyone who can reach the
   API can read/edit/delete any build. Fine while this only runs on your
   LAN; worth revisiting before it's reachable from outside the home lab.
-- `docker-compose.yml`'s `command:` runs `alembic upgrade head` on every
-  container start, which is convenient for local dev but is a pattern
-  worth reconsidering for the prod stack later (you may prefer migrations
-  as an explicit, deliberate step rather than something that just happens
-  on every restart).
+- Both compose files run `alembic upgrade head` on every api container
+  start -- including prod, so a release's migrations apply as soon as it
+  deploys. Fine at this size; worth making an explicit, deliberate step
+  (and adding a pre-deploy `pg_dump`) before the schema gets riskier.
+  See "Database" in `deploy/README.md` for the manual backup/rollback.

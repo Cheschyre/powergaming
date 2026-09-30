@@ -1,0 +1,22 @@
+name: CD - test
+
+# Every push to `develop` builds :develop images and redeploys
+# powergaming-test (/opt/powergaming-test on docker-host). The actual
+# pipeline lives in deploy-stack.yml, shared with cd-prod.yml.
+
+on:
+  push:
+    branches: ["develop"]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/deploy-stack.yml
+    with:
+      stack: test
+      image_tag: develop
+      environment: test
+    secrets: inherit

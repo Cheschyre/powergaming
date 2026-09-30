@@ -1,0 +1,41 @@
+name: CD - prod
+
+# Pushing a version tag (e.g. `git tag v1.0.0 && git push origin v1.0.0`)
+# that points at a commit on `main` builds :v1.0.0 images and deploys
+# them to powergaming-prod (/opt/powergaming-prod on docker-host). The
+# actual pipeline lives in deploy-stack.yml, shared with cd-test.yml.
+#
+# Rolling back = re-running an older tag's "CD - prod" run from the
+# Actions tab; it rebuilds that tag and redeploys it.
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  check-tag:
+    name: Check the tag is on main
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          git fetch --quiet origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$GITHUB_REF_NAME ($GITHUB_SHA) is not on main -- merge to main first, then tag there"
+            exit 1
+          fi
+
+  deploy:
+    needs: check-tag
+    uses: ./.github/workflows/deploy-stack.yml
+    with:
+      stack: prod
+      image_tag: ${{ github.ref_name }}
+      environment: production
+    secrets: inherit
