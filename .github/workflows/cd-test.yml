@@ -1,141 +1,22 @@
 name: CD - test
 
-# On every push to `develop`: build+push backend/frontend images to
-# GHCR, then SSH into the home-lab docker-host VM (over Tailscale) and
-# redeploy the powergaming-test stack from them.
-#
-# Uses the DEPLOY_SSH_KEY/DEPLOY_HOST/DEPLOY_USER secrets set up in
-# deploy/README.md, plus a Tailscale OAuth client scoped to a `tag:ci`
-# ACL tag -- see that README for the one-time setup this depends on.
+# Every push to `develop` builds :develop images and redeploys
+# powergaming-test (/opt/powergaming-test on docker-host). The actual
+# pipeline lives in deploy-stack.yml, shared with cd-prod.yml.
 
 on:
   push:
     branches: ["develop"]
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_OWNER: cheschyre
+permissions:
+  contents: read
+  packages: write
 
 jobs:
-  build-backend:
-    name: Build & push backend image
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: docker/build-push-action@v6
-        with:
-          context: backend
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/powergaming-backend:develop
-            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/powergaming-backend:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  build-frontend:
-    name: Build & push frontend image
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: docker/build-push-action@v6
-        with:
-          context: frontend
-          push: true
-          # Left empty so the built app uses relative "/api/..." calls,
-          # proxied by nginx -- see frontend/Dockerfile and nginx.conf.
-          build-args: |
-            VITE_API_BASE_URL=
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/powergaming-frontend:develop
-            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/powergaming-frontend:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   deploy:
-    name: Deploy to powergaming-test
-    needs: [build-backend, build-frontend]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Connect to tailnet
-        uses: tailscale/github-action@v3
-        with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-          tags: tag:ci
-
-      # The action exits 0 even when every `tailscale up` retry fails,
-      # so check reachability ourselves -- fails here instead of as a
-      # confusing SSH timeout. (Not the action's own `targets` check:
-      # it fails whenever the path is DERP-relayed rather than direct,
-      # which is normal for a home lab behind NAT.)
-      - name: Check docker-host is reachable over the tailnet
-        run: sudo tailscale ping --until-direct=false --c=10 "$DEPLOY_HOST"
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: deploy
-
-      - name: Set up SSH (key + pinned docker-host host key)
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          # docker-host's sshd ED25519 key. Check with
-          # `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` on the VM;
-          # update here if the VM is ever rebuilt.
-          HOST_KEY_FINGERPRINT: SHA256:q/lNhlNlifpMK9o/CWkHF9qk6FUvizdZI4PVydjcfbg
-        run: |
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -t ed25519 "$DEPLOY_HOST" 2>/dev/null > host_key
-          got=$(ssh-keygen -lf host_key | awk '{print $2}')
-          if [ "$got" != "$HOST_KEY_FINGERPRINT" ]; then
-            echo "::error::docker-host host key is $got, expected $HOST_KEY_FINGERPRINT"
-            exit 1
-          fi
-          cat host_key >> ~/.ssh/known_hosts
-
-      # Ships the compose file from this commit, so changes to
-      # deploy/docker-compose.test.yml deploy themselves. It's validated
-      # on the VM (against the real .env) before replacing the live one.
-      - name: Upload compose file, pull and restart the stack
-        env:
-          TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
-        run: |
-          scp -o BatchMode=yes deploy/docker-compose.test.yml \
-            "$TARGET:/opt/powergaming-test/docker-compose.yml.new"
-          ssh -o BatchMode=yes "$TARGET" bash -s <<'EOF'
-          set -euo pipefail
-          cd /opt/powergaming-test
-          docker compose -f docker-compose.yml.new config -q
-          mv docker-compose.yml.new docker-compose.yml
-          docker compose pull
-          docker compose up -d --remove-orphans
-          docker image prune -f
-          EOF
+    uses: ./.github/workflows/deploy-stack.yml
+    with:
+      stack: test
+      image_tag: develop
+      environment: test
+    secrets: inherit

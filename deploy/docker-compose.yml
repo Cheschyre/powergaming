@@ -1,15 +1,18 @@
-# powergaming-test deploy stack.
+# powergaming deploy stack -- shared by powergaming-test and
+# powergaming-prod, which run as separate compose projects (separate
+# containers, network and database volume) from separate directories on
+# docker-host: /opt/powergaming-test and /opt/powergaming-prod.
 #
-# The CD workflow (.github/workflows/cd-test.yml) uploads this file to
-# the docker-host VM as /opt/powergaming-test/docker-compose.yml on every
-# push to `develop`, then pulls and restarts it -- edit it here, not on
-# the VM. See deploy/README.md for the one-time setup.
+# The deploy workflow (.github/workflows/deploy-stack.yml) uploads this
+# file to the stack's directory as docker-compose.yml on every deploy,
+# writes the image tag it just built into that directory's .env as TAG,
+# then pulls and restarts -- edit it here, not on the VM. Everything that
+# differs between test and prod (credentials, ports, APP_ENV) lives in
+# each directory's .env; see .env.example and deploy/README.md.
 #
 # Unlike the root docker-compose.yml (local dev -- builds from source,
 # bind-mounts the code, hot-reloads), this pulls pre-built images from
-# GHCR that CI already built and pushed, and runs them as they'll
-# actually run in production. Needs a .env file next to it on the VM --
-# see .env.example in this directory.
+# GHCR that CI already built and pushed.
 
 services:
   db:
@@ -28,10 +31,10 @@ services:
       retries: 5
 
   api:
-    image: ghcr.io/cheschyre/powergaming-backend:${TAG:-develop}
+    image: ghcr.io/cheschyre/powergaming-backend:${TAG:?TAG must be set in .env}
     restart: unless-stopped
     environment:
-      - ENV=test
+      - ENV=${APP_ENV:-test}
       - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     depends_on:
       db:
@@ -44,7 +47,7 @@ services:
       - "${API_PORT:-8001}:8000"
 
   web:
-    image: ghcr.io/cheschyre/powergaming-frontend:${TAG:-develop}
+    image: ghcr.io/cheschyre/powergaming-frontend:${TAG:?TAG must be set in .env}
     restart: unless-stopped
     depends_on:
       - api

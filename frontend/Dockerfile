@@ -12,7 +12,7 @@ COPY . .
 # Left empty on purpose: an empty VITE_API_BASE_URL makes api.ts use
 # relative paths ("/api/..."), which nginx.conf proxies to the api
 # container. That means this same image works at any host/port without
-# a rebuild -- only docker-compose.test.yml's port mapping changes.
+# a rebuild -- only deploy/docker-compose.yml's port mapping changes.
 ARG VITE_API_BASE_URL=""
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 RUN npm run build
