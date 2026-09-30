@@ -60,7 +60,7 @@ schema needs a manual `alembic downgrade` -- back up first:
 
 ```bash
 cd /opt/powergaming-prod
-docker compose exec db pg_dump -U powergaming powergaming > ~/powergaming-prod-$(date +%F).sql
+sudo -u deploy docker compose exec -T db pg_dump -U powergaming powergaming > ~/powergaming-prod-$(date +%F).sql
 ```
 
 ## One-time setup
@@ -150,7 +150,8 @@ paid GitHub plan.)
 ## Verifying a deploy
 
 ```bash
-cd /opt/powergaming-test && docker compose ps     # or /opt/powergaming-prod
+# .env is mode 600 (it holds the DB password), so run compose as deploy
+cd /opt/powergaming-test && sudo -u deploy docker compose ps   # or /opt/powergaming-prod
 curl -s http://100.104.100.109:8081/api/builds    # test (prod: 8082)
 curl -s http://100.104.100.109:8001/health        # test (prod: 8002)
 ```
