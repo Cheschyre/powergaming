@@ -214,8 +214,8 @@ Response shape is identical to `/api/calculate`.
 1. ~~Backend API wrapping the existing logic~~ -- done.
 2. ~~Postgres + Alembic migrations, saved builds~~ -- done.
 3. ~~Frontend (React + TypeScript + Vite)~~ -- done.
-4. Full pytest suite -- backend well underway; frontend has no tests yet,
-   worth adding once the UI settles.
+4. Full pytest suite -- backend well underway; the frontend test suite
+   is folded into step 8 below.
 5. ~~GitHub Actions CI~~ -- done. Runs backend `pytest` and a
    frontend type-check + build on every push and PR, to every branch.
    Doesn't yet run a linter (ruff/ESLint) -- worth adding once CI itself
@@ -235,8 +235,68 @@ Response shape is identical to `/api/calculate`.
    `cd-prod.yml` runs it for version tags (`v1.2.3`) on `main`, and the
    deploy waits for approval in the `production` GitHub Environment. See
    "Releasing to prod" in `deploy/README.md`.
+8. Pay down engineering debt -- the backlog in "Notes for later steps"
+   below, cleared out before step 9 adds more surface area to carry it
+   across:
+   - Linting: `ruff` for the backend, ESLint for the frontend, enforced
+     in `ci.yml`.
+   - Split `requirements.txt` into runtime vs. `requirements-dev.txt`.
+   - Generate `frontend/src/types.ts` from `/openapi.json` instead of
+     hand-maintaining it -- matters more once step 9 starts reshaping
+     the schema.
+   - Tighten CORS in `main.py` from `allow_origins=["*"]` to the real
+     frontend origins.
+   - Make migrations an explicit deploy step instead of `alembic
+     upgrade head` auto-running on every container start, with an
+     automatic pre-deploy `pg_dump` (today's manual version is under
+     "Database" in `deploy/README.md`).
+   - Frontend test suite (Vitest + React Testing Library) -- closes out
+     step 4.
+9. Multiple distinct attacks per round -- today `num_attacks` just
+   repeats one attack profile; real rounds mix attacks (e.g. greatsword
+   x2 + a bonus-action handaxe), each with its own bonus and damage.
+   - `CalculateRequest`/`BuildBase` become a list of attack entries
+     instead of one profile + a count, each with its own
+     `attack_bonus`, damage dice, and its own power-attack
+     (GWM/Sharpshooter) toggle -- per-attack, not round-global, so you
+     can power-attack with the greatsword but not the off-hand hit.
+   - Migration for existing saved builds -- each becomes a single-entry
+     attack list so current data carries over unchanged.
+   - UI: `CalculatorPanel`/`BuildsPanel` get a repeatable attack row in
+     place of the single form.
+10. Level/progression view -- add `character_level` (1-20) and
+    auto-derive proficiency bonus from it (+2 through +6 at the
+    standard breakpoints), shown across a level range alongside
+    hit/crit/HAD and the power-attack breakeven. `attack_bonus` stays
+    the one field it is today (not split into stat mod / proficiency /
+    item bonus) -- revisit that split if/when lite saved-character
+    sheets happen, where it'd actually pay for itself instead of just
+    reassembling into the same number.
+11. Sneak Attack (once-per-turn bonus damage) -- depends on step 9,
+    since "once per turn" only means something once attacks are
+    tracked individually. Applies to whichever attack the user
+    designates, not auto-assigned to the first one that would land.
+12. Other feats:
+    - Crossbow Expert (bonus-action off-hand shot without the usual
+      penalty) -- mostly falls out of step 9's multi-attack model once
+      that exists.
+    - Elven Accuracy (reroll one of two advantage dice) -- needs a new
+      "super-advantage" roll-distribution function alongside the
+      existing advantage/disadvantage one.
+    - Piercer (reroll 1s on damage dice) -- a damage-average formula
+      tweak. Slasher/Crusher are mostly non-damage secondary effects
+      and may not be worth modeling numerically.
+
+Spell-save damage (Fireball, Chromatic Orb, etc.) is intentionally not
+on this list yet -- the app is attack-roll-only today, and steps 9-12
+round that out fully before any save-based mechanics get added.
 
 ## Notes for later steps
+
+Most of the debt noted during steps 1-7 (linting, CORS, hand-maintained
+`types.ts`, `requirements.txt`, migrations-on-every-start) is scheduled
+into step 8 above rather than tracked here twice. What's left, not yet
+scheduled:
 
 - CI (`.github/workflows/ci.yml`) checks the code; CD
   (`cd-test.yml` / `cd-prod.yml`, both via `deploy-stack.yml`) builds,
@@ -244,21 +304,7 @@ Response shape is identical to `/api/calculate`.
   to `powergaming-prod` on a version tag on `main`. Prod rebuilds images
   from the tag rather than promoting the exact `:develop` images test
   ran; worth switching to promotion if test and prod ever drift.
-- CORS in `main.py` is wide open (`allow_origins=["*"]`). Harmless for
-  `powergaming-test` since the frontend talks to the backend through
-  nginx's same-origin `/api/*` proxy (see `frontend/nginx.conf`), not
-  cross-origin -- but still worth tightening before anything reaches
-  further than the home lab.
-- `frontend/src/types.ts` is hand-maintained to match
-  `backend/app/schemas.py`. Fine at this size; if the API grows a lot,
-  consider generating it from FastAPI's `/openapi.json` instead.
-- `requirements.txt` mixes runtime and test dependencies for now — fine at
-  this size, worth splitting into `requirements-dev.txt` if it grows.
 - No auth yet on the `/api/builds` endpoints -- anyone who can reach the
-  API can read/edit/delete any build. Fine while this only runs on your
-  LAN; worth revisiting before it's reachable from outside the home lab.
-- Both compose files run `alembic upgrade head` on every api container
-  start -- including prod, so a release's migrations apply as soon as it
-  deploys. Fine at this size; worth making an explicit, deliberate step
-  (and adding a pre-deploy `pg_dump`) before the schema gets riskier.
-  See "Database" in `deploy/README.md` for the manual backup/rollback.
+  API can read/edit/delete any build. Fine while this is a single-person
+  tool on the LAN; revisit once more users are introduced (see "Builds &
+  comparison" territory -- not yet on this roadmap).
