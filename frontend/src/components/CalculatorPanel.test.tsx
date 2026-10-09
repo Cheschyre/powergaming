@@ -1,55 +1,62 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
+import { newAttack } from "../attacks";
 import { acResult } from "../test/fixtures";
 import CalculatorPanel from "./CalculatorPanel";
 
 vi.mock("../api");
 
+function row(n: number) {
+  return screen.getByRole("group", { name: `Attack ${n}` });
+}
+
 describe("CalculatorPanel", () => {
   beforeEach(() => {
-    vi.mocked(api.calculate).mockResolvedValue({ results: [acResult({ ac: 15 })] });
+    vi.mocked(api.calculate).mockImplementation(async (req) => ({
+      results: req.ac_list.map((ac) => acResult({ ac }, req.attacks.length)),
+    }));
   });
 
-  it("sends the form as a calculate request and shows the results", async () => {
+  it("sends the AC list and every attack row, in order", async () => {
     const user = userEvent.setup();
     render(<CalculatorPanel />);
 
     const acInput = screen.getByLabelText("Target AC(s), comma-separated");
     await user.clear(acInput);
     await user.type(acInput, " 14, ,16 ,");
-    await user.clear(screen.getByLabelText("Attack bonus"));
-    await user.type(screen.getByLabelText("Attack bonus"), "9");
-    await user.click(screen.getByLabelText("Advantage"));
+
+    const name = within(row(1)).getByLabelText("Name");
+    await user.clear(name);
+    await user.type(name, "Greatsword");
+    await user.click(within(row(1)).getByRole("button", { name: "Duplicate" }));
+    await user.click(within(row(2)).getByLabelText("Power Attack (GWM/Sharpshooter)"));
     await user.click(screen.getByRole("button", { name: "Calculate" }));
 
-    expect(api.calculate).toHaveBeenCalledWith({
-      attack_bonus: 9,
-      ac_list: [14, 16],
-      num_dice: 1,
-      die_sides: 8,
-      modifier: 3,
-      num_attacks: 1,
-      advantage: true,
-      disadvantage: false,
-      crit_range: 20,
-      power_attack: false,
-      power_attack_bonus: 10,
-      power_attack_penalty: -5,
-    });
-    expect(await screen.findByRole("table")).toBeInTheDocument();
-    expect(screen.getByRole("cell", { name: "15" })).toBeInTheDocument();
+    const req = vi.mocked(api.calculate).mock.calls[0][0];
+    expect(req.ac_list).toEqual([14, 16]);
+    expect(req.attacks).toEqual([
+      newAttack({ name: "Greatsword" }),
+      newAttack({ name: "Greatsword", power_attack: true }),
+    ]);
   });
 
-  it("only shows the power-attack inputs while Power Attack is checked", async () => {
+  it("shows grouped results for the attacks that were calculated", async () => {
     const user = userEvent.setup();
     render(<CalculatorPanel />);
 
-    expect(screen.queryByLabelText("Power attack bonus damage")).not.toBeInTheDocument();
-    await user.click(screen.getByLabelText("Power Attack (GWM/Sharpshooter)"));
-    expect(screen.getByLabelText("Power attack bonus damage")).toHaveValue(10);
-    expect(screen.getByLabelText("Power attack hit penalty")).toHaveValue(-5);
+    await user.click(screen.getByRole("button", { name: "+ Add attack" }));
+    await user.click(within(row(2)).getByLabelText("Advantage"));
+    await user.click(screen.getByRole("button", { name: "Calculate" }));
+
+    // Two different attacks -> a column group each.
+    expect(await screen.findByRole("table")).toBeInTheDocument();
+    expect(screen.getAllByRole("columnheader", { name: "Attack" })).toHaveLength(2);
+
+    // Editing the rows afterwards doesn't relabel results that no longer match.
+    await user.click(within(row(2)).getByRole("button", { name: "Remove" }));
+    expect(screen.getAllByRole("columnheader", { name: "Attack" })).toHaveLength(2);
   });
 
   it("shows the API error and clears old results", async () => {

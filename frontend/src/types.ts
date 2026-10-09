@@ -12,6 +12,8 @@ import type { components } from "./api-schema";
 
 type Schemas = components["schemas"];
 
+export type AttackEntry = Schemas["AttackEntry"];
+export type AttackResult = Schemas["AttackResult"];
 export type CalculateRequest = Schemas["CalculateRequest"];
 export type ACResult = Schemas["ACResult"];
 export type CalculateResponse = Schemas["CalculateResponse"];

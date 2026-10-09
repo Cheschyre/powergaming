@@ -69,9 +69,8 @@ export interface paths {
         put?: never;
         /**
          * Calculate For Build
-         * @description Run a saved build's stored attack profile against a list of ACs --
-         *     same math as /api/calculate, just pulling the attack profile from the
-         *     database instead of the request body.
+         * @description Run a saved build's stored attacks against a list of ACs -- same math
+         *     as /api/calculate, just pulling the attacks from the database.
          */
         post: operations["calculate_for_build_api_builds__build_id__calculate_post"];
         delete?: never;
@@ -118,26 +117,88 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** ACResult */
+        /**
+         * ACResult
+         * @description A full round against one AC. `attacks` is in the same order as the
+         *     request's attack list.
+         */
         ACResult: {
             /** Ac */
             ac: number;
+            /** Attacks */
+            attacks: components["schemas"]["AttackResult"][];
+            /** Total Had */
+            total_had: number;
+            /** Total Had Without Power Attack */
+            total_had_without_power_attack: number | null;
+        };
+        /**
+         * AttackEntry
+         * @description One attack roll in a round, with everything that can differ between
+         *     attacks -- including whether this particular attack uses power attack
+         *     (GWM/Sharpshooter). A round is a list of these; repeat an entry for
+         *     Extra Attack rather than using a count.
+         */
+        AttackEntry: {
+            /**
+             * Advantage
+             * @default false
+             */
+            advantage: boolean;
+            /** Attack Bonus */
+            attack_bonus: number;
+            /**
+             * Crit Range
+             * @default 20
+             */
+            crit_range: number;
+            /** Die Sides */
+            die_sides: number;
+            /**
+             * Disadvantage
+             * @default false
+             */
+            disadvantage: boolean;
+            /**
+             * Modifier
+             * @default 0
+             */
+            modifier: number;
+            /**
+             * Name
+             * @default Attack
+             */
+            name: string;
+            /** Num Dice */
+            num_dice: number;
+            /**
+             * Power Attack
+             * @default false
+             */
+            power_attack: boolean;
+            /**
+             * Power Attack Bonus
+             * @default 0
+             */
+            power_attack_bonus: number;
+            /**
+             * Power Attack Penalty
+             * @default 0
+             */
+            power_attack_penalty: number;
+        };
+        /**
+         * AttackResult
+         * @description One attack's numbers against one AC, with its own power-attack
+         *     setting applied.
+         */
+        AttackResult: {
             /** Crit Chance */
             crit_chance: number;
             /** Had */
             had: number;
             /** Hit Chance */
             hit_chance: number;
-            /** Power Crit Chance */
-            power_crit_chance: number | null;
-            /** Power Had */
-            power_had: number | null;
-            /** Power Hit Chance */
-            power_hit_chance: number | null;
-            /** Power Total Had Per Round */
-            power_total_had_per_round: number | null;
-            /** Total Had Per Round */
-            total_had_per_round: number;
         };
         /** BreakevenRequest */
         BreakevenRequest: {
@@ -200,7 +261,7 @@ export interface components {
         };
         /**
          * BuildCalculateRequest
-         * @description AC list to run a saved build's stored attack profile against.
+         * @description AC list to run a saved build's stored attacks against.
          */
         BuildCalculateRequest: {
             /** Ac List */
@@ -211,112 +272,24 @@ export interface components {
          * @description Everything required to save a new build.
          */
         BuildCreate: {
-            /**
-             * Advantage
-             * @default false
-             */
-            advantage: boolean;
-            /** Attack Bonus */
-            attack_bonus: number;
-            /**
-             * Crit Range
-             * @default 20
-             */
-            crit_range: number;
-            /** Die Sides */
-            die_sides: number;
-            /**
-             * Disadvantage
-             * @default false
-             */
-            disadvantage: boolean;
-            /**
-             * Modifier
-             * @default 0
-             */
-            modifier: number;
+            /** Attacks */
+            attacks: components["schemas"]["AttackEntry"][];
             /** Name */
             name: string;
-            /**
-             * Num Attacks
-             * @default 1
-             */
-            num_attacks: number;
-            /** Num Dice */
-            num_dice: number;
-            /**
-             * Power Attack
-             * @default false
-             */
-            power_attack: boolean;
-            /**
-             * Power Attack Bonus
-             * @default 0
-             */
-            power_attack_bonus: number;
-            /**
-             * Power Attack Penalty
-             * @default 0
-             */
-            power_attack_penalty: number;
         };
         /** BuildRead */
         BuildRead: {
-            /**
-             * Advantage
-             * @default false
-             */
-            advantage: boolean;
-            /** Attack Bonus */
-            attack_bonus: number;
+            /** Attacks */
+            attacks: components["schemas"]["AttackEntry"][];
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
-            /**
-             * Crit Range
-             * @default 20
-             */
-            crit_range: number;
-            /** Die Sides */
-            die_sides: number;
-            /**
-             * Disadvantage
-             * @default false
-             */
-            disadvantage: boolean;
             /** Id */
             id: number;
-            /**
-             * Modifier
-             * @default 0
-             */
-            modifier: number;
             /** Name */
             name: string;
-            /**
-             * Num Attacks
-             * @default 1
-             */
-            num_attacks: number;
-            /** Num Dice */
-            num_dice: number;
-            /**
-             * Power Attack
-             * @default false
-             */
-            power_attack: boolean;
-            /**
-             * Power Attack Bonus
-             * @default 0
-             */
-            power_attack_bonus: number;
-            /**
-             * Power Attack Penalty
-             * @default 0
-             */
-            power_attack_penalty: number;
             /**
              * Updated At
              * Format: date-time
@@ -325,84 +298,21 @@ export interface components {
         };
         /**
          * BuildUpdate
-         * @description A partial update -- every field optional, only what's sent gets changed.
+         * @description A partial update -- send only what changes. `attacks`, if sent,
+         *     replaces the whole list.
          */
         BuildUpdate: {
-            /** Advantage */
-            advantage?: boolean | null;
-            /** Attack Bonus */
-            attack_bonus?: number | null;
-            /** Crit Range */
-            crit_range?: number | null;
-            /** Die Sides */
-            die_sides?: number | null;
-            /** Disadvantage */
-            disadvantage?: boolean | null;
-            /** Modifier */
-            modifier?: number | null;
+            /** Attacks */
+            attacks?: components["schemas"]["AttackEntry"][] | null;
             /** Name */
             name?: string | null;
-            /** Num Attacks */
-            num_attacks?: number | null;
-            /** Num Dice */
-            num_dice?: number | null;
-            /** Power Attack */
-            power_attack?: boolean | null;
-            /** Power Attack Bonus */
-            power_attack_bonus?: number | null;
-            /** Power Attack Penalty */
-            power_attack_penalty?: number | null;
         };
         /** CalculateRequest */
         CalculateRequest: {
             /** Ac List */
             ac_list: number[];
-            /**
-             * Advantage
-             * @default false
-             */
-            advantage: boolean;
-            /** Attack Bonus */
-            attack_bonus: number;
-            /**
-             * Crit Range
-             * @default 20
-             */
-            crit_range: number;
-            /** Die Sides */
-            die_sides: number;
-            /**
-             * Disadvantage
-             * @default false
-             */
-            disadvantage: boolean;
-            /**
-             * Modifier
-             * @default 0
-             */
-            modifier: number;
-            /**
-             * Num Attacks
-             * @default 1
-             */
-            num_attacks: number;
-            /** Num Dice */
-            num_dice: number;
-            /**
-             * Power Attack
-             * @default false
-             */
-            power_attack: boolean;
-            /**
-             * Power Attack Bonus
-             * @default 0
-             */
-            power_attack_bonus: number;
-            /**
-             * Power Attack Penalty
-             * @default 0
-             */
-            power_attack_penalty: number;
+            /** Attacks */
+            attacks: components["schemas"]["AttackEntry"][];
         };
         /** CalculateResponse */
         CalculateResponse: {

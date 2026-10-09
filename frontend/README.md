@@ -10,6 +10,7 @@ frontend/
 │   ├── api-schema.ts          # GENERATED -- see ../scripts/gen-api-types.sh
 │   ├── types.ts               # friendly names for the generated API types
 │   ├── api.ts                 # fetch wrapper, one function per endpoint
+│   ├── attacks.ts             # attack-list helpers: defaults, grouping, labels
 │   ├── App.tsx                # tab switcher: Calculator / Breakeven / Saved Builds
 │   ├── main.tsx                # React entry point
 │   ├── styles.css
@@ -17,7 +18,8 @@ frontend/
 │       ├── CalculatorPanel.tsx    # /api/calculate
 │       ├── BreakevenPanel.tsx     # /api/breakeven
 │       ├── BuildsPanel.tsx        # /api/builds CRUD + per-build calculate
-│       ├── ResultsTable.tsx       # shared results table (Calculator + Builds)
+│       ├── AttackListEditor.tsx   # repeatable attack rows (Duplicate/Remove/Add)
+│       ├── ResultsTable.tsx       # shared results table; groups identical attacks
 │       ├── NumberField.tsx        # small reusable form controls
 │       └── CheckboxField.tsx
 ├── index.html

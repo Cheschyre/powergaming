@@ -1,19 +1,20 @@
 """Integration tests for the saved-builds CRUD endpoints and the
 per-build calculate endpoint."""
 
+GREATSWORD = {
+    "name": "Greatsword",
+    "attack_bonus": 8,
+    "num_dice": 2,
+    "die_sides": 6,
+    "modifier": 5,
+    "power_attack": True,
+    "power_attack_bonus": 10,
+    "power_attack_penalty": -5,
+}
+
 
 def _sample_build(**overrides):
-    build = {
-        "name": "GWM Fighter",
-        "attack_bonus": 8,
-        "num_dice": 1,
-        "die_sides": 12,
-        "modifier": 3,
-        "num_attacks": 2,
-        "power_attack": True,
-        "power_attack_bonus": 10,
-        "power_attack_penalty": -5,
-    }
+    build = {"name": "GWM Fighter", "attacks": [GREATSWORD, GREATSWORD]}
     build.update(overrides)
     return build
 
@@ -24,7 +25,14 @@ def test_create_build(client):
 
     body = resp.json()
     assert body["name"] == "GWM Fighter"
-    assert body["attack_bonus"] == 8
+    assert len(body["attacks"]) == 2
+    # Defaults are filled in and returned on every entry.
+    assert body["attacks"][0] == {
+        **GREATSWORD,
+        "crit_range": 20,
+        "advantage": False,
+        "disadvantage": False,
+    }
     assert "id" in body
     assert "created_at" in body
 
@@ -55,16 +63,34 @@ def test_list_builds(client):
 def test_update_build_partial(client):
     build_id = client.post("/api/builds", json=_sample_build()).json()["id"]
 
-    resp = client.patch(f"/api/builds/{build_id}", json={"attack_bonus": 9})
+    resp = client.patch(f"/api/builds/{build_id}", json={"name": "Renamed"})
     assert resp.status_code == 200
-
     body = resp.json()
-    assert body["attack_bonus"] == 9
-    assert body["name"] == "GWM Fighter"  # untouched fields stay as they were
+    assert body["name"] == "Renamed"
+    assert len(body["attacks"]) == 2  # untouched fields stay as they were
+
+
+def test_update_build_replaces_attack_list(client):
+    build_id = client.post("/api/builds", json=_sample_build()).json()["id"]
+    handaxe = {"name": "Handaxe", "attack_bonus": 8, "num_dice": 1, "die_sides": 6}
+
+    resp = client.patch(f"/api/builds/{build_id}", json={"attacks": [GREATSWORD, handaxe]})
+    assert resp.status_code == 200
+    assert [a["name"] for a in resp.json()["attacks"]] == ["Greatsword", "Handaxe"]
+    assert [a["name"] for a in client.get(f"/api/builds/{build_id}").json()["attacks"]] == [
+        "Greatsword",
+        "Handaxe",
+    ]
+
+
+def test_update_build_rejects_empty_attack_list(client):
+    build_id = client.post("/api/builds", json=_sample_build()).json()["id"]
+    resp = client.patch(f"/api/builds/{build_id}", json={"attacks": []})
+    assert resp.status_code == 422
 
 
 def test_update_missing_build_404(client):
-    resp = client.patch("/api/builds/999", json={"attack_bonus": 9})
+    resp = client.patch("/api/builds/999", json={"name": "x"})
     assert resp.status_code == 404
 
 
@@ -78,25 +104,24 @@ def test_delete_build(client):
     assert resp.status_code == 404
 
 
-def test_calculate_for_build_uses_stored_profile(client):
-    build_id = client.post("/api/builds", json=_sample_build()).json()["id"]
+def test_calculate_for_build_matches_calculate(client):
+    """Running a saved build is exactly /api/calculate on its stored attacks."""
+    build = _sample_build()
+    build_id = client.post("/api/builds", json=build).json()["id"]
 
     resp = client.post(f"/api/builds/{build_id}/calculate", json={"ac_list": [12, 18]})
     assert resp.status_code == 200
+    direct = client.post(
+        "/api/calculate", json={"ac_list": [12, 18], "attacks": build["attacks"]}
+    ).json()
+    assert resp.json() == direct
+    assert resp.json()["results"][0]["total_had_without_power_attack"] is not None
 
-    results = resp.json()["results"]
-    assert len(results) == 2
-    # power_attack=True on the saved build, so power numbers should be populated
-    assert results[0]["power_had"] is not None
-    assert results[1]["power_had"] is not None
 
-
-def test_calculate_for_build_without_power_attack(client):
-    build_id = client.post("/api/builds", json=_sample_build(power_attack=False)).json()["id"]
-
-    resp = client.post(f"/api/builds/{build_id}/calculate", json={"ac_list": [15]})
-    assert resp.status_code == 200
-    assert resp.json()["results"][0]["power_had"] is None
+def test_calculate_for_build_rejects_bad_ac(client):
+    build_id = client.post("/api/builds", json=_sample_build()).json()["id"]
+    resp = client.post(f"/api/builds/{build_id}/calculate", json={"ac_list": [0]})
+    assert resp.status_code == 422
 
 
 def test_calculate_for_missing_build_404(client):

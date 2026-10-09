@@ -2,11 +2,119 @@
   "components": {
     "schemas": {
       "ACResult": {
+        "description": "A full round against one AC. `attacks` is in the same order as the\nrequest's attack list.",
         "properties": {
           "ac": {
             "title": "Ac",
             "type": "integer"
           },
+          "attacks": {
+            "items": {
+              "$ref": "#/components/schemas/AttackResult"
+            },
+            "title": "Attacks",
+            "type": "array"
+          },
+          "total_had": {
+            "title": "Total Had",
+            "type": "number"
+          },
+          "total_had_without_power_attack": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Had Without Power Attack"
+          }
+        },
+        "required": [
+          "ac",
+          "attacks",
+          "total_had",
+          "total_had_without_power_attack"
+        ],
+        "title": "ACResult",
+        "type": "object"
+      },
+      "AttackEntry": {
+        "description": "One attack roll in a round, with everything that can differ between\nattacks -- including whether this particular attack uses power attack\n(GWM/Sharpshooter). A round is a list of these; repeat an entry for\nExtra Attack rather than using a count.",
+        "properties": {
+          "advantage": {
+            "default": false,
+            "title": "Advantage",
+            "type": "boolean"
+          },
+          "attack_bonus": {
+            "title": "Attack Bonus",
+            "type": "integer"
+          },
+          "crit_range": {
+            "default": 20,
+            "maximum": 20.0,
+            "minimum": 2.0,
+            "title": "Crit Range",
+            "type": "integer"
+          },
+          "die_sides": {
+            "maximum": 1000.0,
+            "minimum": 2.0,
+            "title": "Die Sides",
+            "type": "integer"
+          },
+          "disadvantage": {
+            "default": false,
+            "title": "Disadvantage",
+            "type": "boolean"
+          },
+          "modifier": {
+            "default": 0,
+            "title": "Modifier",
+            "type": "integer"
+          },
+          "name": {
+            "default": "Attack",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "num_dice": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Num Dice",
+            "type": "integer"
+          },
+          "power_attack": {
+            "default": false,
+            "title": "Power Attack",
+            "type": "boolean"
+          },
+          "power_attack_bonus": {
+            "default": 0,
+            "title": "Power Attack Bonus",
+            "type": "integer"
+          },
+          "power_attack_penalty": {
+            "default": 0,
+            "title": "Power Attack Penalty",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "attack_bonus",
+          "num_dice",
+          "die_sides"
+        ],
+        "title": "AttackEntry",
+        "type": "object"
+      },
+      "AttackResult": {
+        "description": "One attack's numbers against one AC, with its own power-attack\nsetting applied.",
+        "properties": {
           "crit_chance": {
             "title": "Crit Chance",
             "type": "number"
@@ -18,68 +126,14 @@
           "hit_chance": {
             "title": "Hit Chance",
             "type": "number"
-          },
-          "power_crit_chance": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Power Crit Chance"
-          },
-          "power_had": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Power Had"
-          },
-          "power_hit_chance": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Power Hit Chance"
-          },
-          "power_total_had_per_round": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Power Total Had Per Round"
-          },
-          "total_had_per_round": {
-            "title": "Total Had Per Round",
-            "type": "number"
           }
         },
         "required": [
-          "ac",
           "hit_chance",
           "crit_chance",
-          "had",
-          "total_had_per_round",
-          "power_hit_chance",
-          "power_crit_chance",
-          "power_had",
-          "power_total_had_per_round"
+          "had"
         ],
-        "title": "ACResult",
+        "title": "AttackResult",
         "type": "object"
       },
       "BreakevenRequest": {
@@ -203,7 +257,7 @@
         "type": "object"
       },
       "BuildCalculateRequest": {
-        "description": "AC list to run a saved build's stored attack profile against.",
+        "description": "AC list to run a saved build's stored attacks against.",
         "properties": {
           "ac_list": {
             "items": {
@@ -224,123 +278,47 @@
       "BuildCreate": {
         "description": "Everything required to save a new build.",
         "properties": {
-          "advantage": {
-            "default": false,
-            "title": "Advantage",
-            "type": "boolean"
-          },
-          "attack_bonus": {
-            "title": "Attack Bonus",
-            "type": "integer"
-          },
-          "crit_range": {
-            "default": 20,
-            "maximum": 20.0,
-            "minimum": 2.0,
-            "title": "Crit Range",
-            "type": "integer"
-          },
-          "die_sides": {
-            "maximum": 1000.0,
-            "minimum": 2.0,
-            "title": "Die Sides",
-            "type": "integer"
-          },
-          "disadvantage": {
-            "default": false,
-            "title": "Disadvantage",
-            "type": "boolean"
-          },
-          "modifier": {
-            "default": 0,
-            "title": "Modifier",
-            "type": "integer"
+          "attacks": {
+            "items": {
+              "$ref": "#/components/schemas/AttackEntry"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Attacks",
+            "type": "array"
           },
           "name": {
             "maxLength": 100,
             "minLength": 1,
             "title": "Name",
             "type": "string"
-          },
-          "num_attacks": {
-            "default": 1,
-            "maximum": 20.0,
-            "minimum": 1.0,
-            "title": "Num Attacks",
-            "type": "integer"
-          },
-          "num_dice": {
-            "maximum": 100.0,
-            "minimum": 1.0,
-            "title": "Num Dice",
-            "type": "integer"
-          },
-          "power_attack": {
-            "default": false,
-            "title": "Power Attack",
-            "type": "boolean"
-          },
-          "power_attack_bonus": {
-            "default": 0,
-            "title": "Power Attack Bonus",
-            "type": "integer"
-          },
-          "power_attack_penalty": {
-            "default": 0,
-            "title": "Power Attack Penalty",
-            "type": "integer"
           }
         },
         "required": [
           "name",
-          "attack_bonus",
-          "num_dice",
-          "die_sides"
+          "attacks"
         ],
         "title": "BuildCreate",
         "type": "object"
       },
       "BuildRead": {
         "properties": {
-          "advantage": {
-            "default": false,
-            "title": "Advantage",
-            "type": "boolean"
-          },
-          "attack_bonus": {
-            "title": "Attack Bonus",
-            "type": "integer"
+          "attacks": {
+            "items": {
+              "$ref": "#/components/schemas/AttackEntry"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Attacks",
+            "type": "array"
           },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
             "type": "string"
           },
-          "crit_range": {
-            "default": 20,
-            "maximum": 20.0,
-            "minimum": 2.0,
-            "title": "Crit Range",
-            "type": "integer"
-          },
-          "die_sides": {
-            "maximum": 1000.0,
-            "minimum": 2.0,
-            "title": "Die Sides",
-            "type": "integer"
-          },
-          "disadvantage": {
-            "default": false,
-            "title": "Disadvantage",
-            "type": "boolean"
-          },
           "id": {
             "title": "Id",
-            "type": "integer"
-          },
-          "modifier": {
-            "default": 0,
-            "title": "Modifier",
             "type": "integer"
           },
           "name": {
@@ -348,34 +326,6 @@
             "minLength": 1,
             "title": "Name",
             "type": "string"
-          },
-          "num_attacks": {
-            "default": 1,
-            "maximum": 20.0,
-            "minimum": 1.0,
-            "title": "Num Attacks",
-            "type": "integer"
-          },
-          "num_dice": {
-            "maximum": 100.0,
-            "minimum": 1.0,
-            "title": "Num Dice",
-            "type": "integer"
-          },
-          "power_attack": {
-            "default": false,
-            "title": "Power Attack",
-            "type": "boolean"
-          },
-          "power_attack_bonus": {
-            "default": 0,
-            "title": "Power Attack Bonus",
-            "type": "integer"
-          },
-          "power_attack_penalty": {
-            "default": 0,
-            "title": "Power Attack Penalty",
-            "type": "integer"
           },
           "updated_at": {
             "format": "date-time",
@@ -385,17 +335,7 @@
         },
         "required": [
           "name",
-          "attack_bonus",
-          "num_dice",
-          "die_sides",
-          "modifier",
-          "num_attacks",
-          "advantage",
-          "disadvantage",
-          "crit_range",
-          "power_attack",
-          "power_attack_bonus",
-          "power_attack_penalty",
+          "attacks",
           "id",
           "created_at",
           "updated_at"
@@ -404,77 +344,23 @@
         "type": "object"
       },
       "BuildUpdate": {
-        "description": "A partial update -- every field optional, only what's sent gets changed.",
+        "description": "A partial update -- send only what changes. `attacks`, if sent,\nreplaces the whole list.",
         "properties": {
-          "advantage": {
+          "attacks": {
             "anyOf": [
               {
-                "type": "boolean"
+                "items": {
+                  "$ref": "#/components/schemas/AttackEntry"
+                },
+                "maxItems": 20,
+                "minItems": 1,
+                "type": "array"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Advantage"
-          },
-          "attack_bonus": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Attack Bonus"
-          },
-          "crit_range": {
-            "anyOf": [
-              {
-                "maximum": 20.0,
-                "minimum": 2.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Crit Range"
-          },
-          "die_sides": {
-            "anyOf": [
-              {
-                "maximum": 1000.0,
-                "minimum": 2.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Die Sides"
-          },
-          "disadvantage": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Disadvantage"
-          },
-          "modifier": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Modifier"
+            "title": "Attacks"
           },
           "name": {
             "anyOf": [
@@ -488,65 +374,6 @@
               }
             ],
             "title": "Name"
-          },
-          "num_attacks": {
-            "anyOf": [
-              {
-                "maximum": 20.0,
-                "minimum": 1.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Num Attacks"
-          },
-          "num_dice": {
-            "anyOf": [
-              {
-                "maximum": 100.0,
-                "minimum": 1.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Num Dice"
-          },
-          "power_attack": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Power Attack"
-          },
-          "power_attack_bonus": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Power Attack Bonus"
-          },
-          "power_attack_penalty": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Power Attack Penalty"
           }
         },
         "title": "BuildUpdate",
@@ -563,72 +390,19 @@
             "title": "Ac List",
             "type": "array"
           },
-          "advantage": {
-            "default": false,
-            "title": "Advantage",
-            "type": "boolean"
-          },
-          "attack_bonus": {
-            "title": "Attack Bonus",
-            "type": "integer"
-          },
-          "crit_range": {
-            "default": 20,
-            "maximum": 20.0,
-            "minimum": 2.0,
-            "title": "Crit Range",
-            "type": "integer"
-          },
-          "die_sides": {
-            "maximum": 1000.0,
-            "minimum": 2.0,
-            "title": "Die Sides",
-            "type": "integer"
-          },
-          "disadvantage": {
-            "default": false,
-            "title": "Disadvantage",
-            "type": "boolean"
-          },
-          "modifier": {
-            "default": 0,
-            "title": "Modifier",
-            "type": "integer"
-          },
-          "num_attacks": {
-            "default": 1,
-            "maximum": 20.0,
-            "minimum": 1.0,
-            "title": "Num Attacks",
-            "type": "integer"
-          },
-          "num_dice": {
-            "maximum": 100.0,
-            "minimum": 1.0,
-            "title": "Num Dice",
-            "type": "integer"
-          },
-          "power_attack": {
-            "default": false,
-            "title": "Power Attack",
-            "type": "boolean"
-          },
-          "power_attack_bonus": {
-            "default": 0,
-            "title": "Power Attack Bonus",
-            "type": "integer"
-          },
-          "power_attack_penalty": {
-            "default": 0,
-            "title": "Power Attack Penalty",
-            "type": "integer"
+          "attacks": {
+            "items": {
+              "$ref": "#/components/schemas/AttackEntry"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Attacks",
+            "type": "array"
           }
         },
         "required": [
-          "attack_bonus",
           "ac_list",
-          "num_dice",
-          "die_sides"
+          "attacks"
         ],
         "title": "CalculateRequest",
         "type": "object"
@@ -699,7 +473,7 @@
   },
   "info": {
     "title": "Power Gaming Calculator API",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -932,7 +706,7 @@
     },
     "/api/builds/{build_id}/calculate": {
       "post": {
-        "description": "Run a saved build's stored attack profile against a list of ACs --\nsame math as /api/calculate, just pulling the attack profile from the\ndatabase instead of the request body.",
+        "description": "Run a saved build's stored attacks against a list of ACs -- same math\nas /api/calculate, just pulling the attacks from the database.",
         "operationId": "calculate_for_build_api_builds__build_id__calculate_post",
         "parameters": [
           {

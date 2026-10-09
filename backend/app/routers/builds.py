@@ -48,25 +48,11 @@ def delete_build(build_id: int, db: Session = Depends(get_db)):
 def calculate_for_build(
     build_id: int, req: schemas.BuildCalculateRequest, db: Session = Depends(get_db)
 ):
-    """Run a saved build's stored attack profile against a list of ACs --
-    same math as /api/calculate, just pulling the attack profile from the
-    database instead of the request body."""
+    """Run a saved build's stored attacks against a list of ACs -- same math
+    as /api/calculate, just pulling the attacks from the database."""
     db_build = crud.get_build(db, build_id)
     if db_build is None:
         raise HTTPException(status_code=404, detail="Build not found")
 
-    results = compute_ac_results(
-        db_build.attack_bonus,
-        req.ac_list,
-        db_build.num_dice,
-        db_build.die_sides,
-        db_build.modifier,
-        db_build.num_attacks,
-        db_build.advantage,
-        db_build.disadvantage,
-        db_build.crit_range,
-        db_build.power_attack,
-        db_build.power_attack_bonus,
-        db_build.power_attack_penalty,
-    )
-    return schemas.CalculateResponse(results=results)
+    build = schemas.BuildRead.model_validate(db_build)
+    return schemas.CalculateResponse(results=compute_ac_results(build.attacks, req.ac_list))
