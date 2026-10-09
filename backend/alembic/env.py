@@ -8,8 +8,8 @@ from sqlalchemy import engine_from_config, pool
 # Make `app` importable when Alembic is invoked from the backend/ directory.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.db import Base  # noqa: E402
 from app import models  # noqa: E402,F401 -- registers models on Base.metadata
+from app.db import Base  # noqa: E402
 
 config = context.config
 

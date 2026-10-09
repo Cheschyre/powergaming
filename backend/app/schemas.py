@@ -1,14 +1,13 @@
 """Pydantic request/response models for the API."""
 
 from datetime import datetime
-from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class CalculateRequest(BaseModel):
     attack_bonus: int
-    ac_list: List[int] = Field(..., min_length=1, max_length=30)
+    ac_list: list[int] = Field(..., min_length=1, max_length=30)
     num_dice: int = Field(..., ge=1, le=100)
     die_sides: int = Field(..., ge=2, le=1000)
     modifier: int = 0
@@ -22,7 +21,7 @@ class CalculateRequest(BaseModel):
 
     @field_validator("ac_list")
     @classmethod
-    def ac_in_range(cls, v: List[int]) -> List[int]:
+    def ac_in_range(cls, v: list[int]) -> list[int]:
         for ac in v:
             if not (1 <= ac <= 30):
                 raise ValueError("Each AC must be between 1 and 30.")
@@ -35,14 +34,14 @@ class ACResult(BaseModel):
     crit_chance: float
     had: float
     total_had_per_round: float
-    power_hit_chance: Optional[float] = None
-    power_crit_chance: Optional[float] = None
-    power_had: Optional[float] = None
-    power_total_had_per_round: Optional[float] = None
+    power_hit_chance: float | None = None
+    power_crit_chance: float | None = None
+    power_had: float | None = None
+    power_total_had_per_round: float | None = None
 
 
 class CalculateResponse(BaseModel):
-    results: List[ACResult]
+    results: list[ACResult]
 
 
 class BreakevenRequest(BaseModel):
@@ -72,13 +71,14 @@ class BreakevenRow(BaseModel):
 
 
 class BreakevenResponse(BaseModel):
-    rows: List[BreakevenRow]
-    crossovers: List[int]
+    rows: list[BreakevenRow]
+    crossovers: list[int]
 
 
 # ---------------------------------------------------------------------------
 # Saved builds (step 2: persistence)
 # ---------------------------------------------------------------------------
+
 
 class BuildBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
@@ -97,23 +97,25 @@ class BuildBase(BaseModel):
 
 class BuildCreate(BuildBase):
     """Everything required to save a new build."""
+
     pass
 
 
 class BuildUpdate(BaseModel):
     """A partial update -- every field optional, only what's sent gets changed."""
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
-    attack_bonus: Optional[int] = None
-    num_dice: Optional[int] = Field(None, ge=1, le=100)
-    die_sides: Optional[int] = Field(None, ge=2, le=1000)
-    modifier: Optional[int] = None
-    num_attacks: Optional[int] = Field(None, ge=1, le=20)
-    advantage: Optional[bool] = None
-    disadvantage: Optional[bool] = None
-    crit_range: Optional[int] = Field(None, ge=2, le=20)
-    power_attack: Optional[bool] = None
-    power_attack_bonus: Optional[int] = None
-    power_attack_penalty: Optional[int] = None
+
+    name: str | None = Field(None, min_length=1, max_length=100)
+    attack_bonus: int | None = None
+    num_dice: int | None = Field(None, ge=1, le=100)
+    die_sides: int | None = Field(None, ge=2, le=1000)
+    modifier: int | None = None
+    num_attacks: int | None = Field(None, ge=1, le=20)
+    advantage: bool | None = None
+    disadvantage: bool | None = None
+    crit_range: int | None = Field(None, ge=2, le=20)
+    power_attack: bool | None = None
+    power_attack_bonus: int | None = None
+    power_attack_penalty: int | None = None
 
 
 class BuildRead(BuildBase):
@@ -128,11 +130,12 @@ class BuildRead(BuildBase):
 
 class BuildCalculateRequest(BaseModel):
     """AC list to run a saved build's stored attack profile against."""
-    ac_list: List[int] = Field(..., min_length=1, max_length=30)
+
+    ac_list: list[int] = Field(..., min_length=1, max_length=30)
 
     @field_validator("ac_list")
     @classmethod
-    def ac_in_range(cls, v: List[int]) -> List[int]:
+    def ac_in_range(cls, v: list[int]) -> list[int]:
         for ac in v:
             if not (1 <= ac <= 30):
                 raise ValueError("Each AC must be between 1 and 30.")

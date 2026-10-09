@@ -132,6 +132,22 @@ pip install -r requirements-dev.txt
 pytest -v
 ```
 
+## Linting
+
+CI fails on any lint or formatting problem, so run these before pushing:
+
+```bash
+cd backend
+ruff check .            # add --fix to apply safe fixes
+ruff format .           # CI runs `ruff format --check .`
+
+cd ../frontend
+npm run lint            # ESLint; fails on warnings too
+```
+
+Ruff is configured in `backend/pyproject.toml`, ESLint in
+`frontend/eslint.config.js`.
+
 ## API
 
 ### `POST /api/calculate`

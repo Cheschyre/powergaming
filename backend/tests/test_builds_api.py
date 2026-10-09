@@ -92,9 +92,7 @@ def test_calculate_for_build_uses_stored_profile(client):
 
 
 def test_calculate_for_build_without_power_attack(client):
-    build_id = client.post(
-        "/api/builds", json=_sample_build(power_attack=False)
-    ).json()["id"]
+    build_id = client.post("/api/builds", json=_sample_build(power_attack=False)).json()["id"]
 
     resp = client.post(f"/api/builds/{build_id}/calculate", json={"ac_list": [15]})
     assert resp.status_code == 200

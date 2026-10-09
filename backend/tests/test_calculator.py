@@ -27,10 +27,10 @@ def test_average_damage_no_modifier():
 @pytest.mark.parametrize(
     "attack_bonus,target_ac,expected",
     [
-        (5, 15, 0.55),   # need an 10+, i.e. 11 of 20 faces
-        (4, 10, 0.75),   # need a 6+
-        (10, 25, 0.3),   # need a 15+
-        (0, 1, 0.95),    # anything but a nat 1
+        (5, 15, 0.55),  # need an 10+, i.e. 11 of 20 faces
+        (4, 10, 0.75),  # need a 6+
+        (10, 25, 0.3),  # need a 15+
+        (0, 1, 0.95),  # anything but a nat 1
         (20, 30, 0.55),  # need a 10+
     ],
 )
@@ -67,7 +67,7 @@ def test_crit_chance_default_is_nat_20_only():
 
 def test_crit_chance_with_advantage():
     # P(at least one of two d20s is a 20) = 1 - 0.95^2
-    expected = 1 - 0.95 ** 2
+    expected = 1 - 0.95**2
     assert crit_chance(5, 15, crit_range=20, advantage=True) == pytest.approx(expected)
 
 

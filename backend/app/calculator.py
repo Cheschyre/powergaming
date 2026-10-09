@@ -37,8 +37,13 @@ def get_roll_distribution(advantage: bool = False, disadvantage: bool = False) -
     return dist
 
 
-def hit_chance(attack_bonus: int, target_ac: int, power_attack_penalty: int = 0,
-               advantage: bool = False, disadvantage: bool = False) -> float:
+def hit_chance(
+    attack_bonus: int,
+    target_ac: int,
+    power_attack_penalty: int = 0,
+    advantage: bool = False,
+    disadvantage: bool = False,
+) -> float:
     """
     Chance to hit. 5e RAW: natural 1 always misses, natural 20 always hits.
     """
@@ -56,8 +61,14 @@ def hit_chance(attack_bonus: int, target_ac: int, power_attack_penalty: int = 0,
     return total
 
 
-def crit_chance(attack_bonus: int, target_ac: int, power_attack_penalty: int = 0,
-                 advantage: bool = False, disadvantage: bool = False, crit_range: int = 20) -> float:
+def crit_chance(
+    attack_bonus: int,
+    target_ac: int,
+    power_attack_penalty: int = 0,
+    advantage: bool = False,
+    disadvantage: bool = False,
+    crit_range: int = 20,
+) -> float:
     """
     Chance of landing a critical hit. A roll still has to hit (or be a
     natural 20, which always hits) to count as a crit -- an expanded crit
@@ -71,25 +82,33 @@ def crit_chance(attack_bonus: int, target_ac: int, power_attack_penalty: int = 0
     for face, prob in dist.items():
         if face < crit_range or face == 1:
             continue
-        if face == 20:
-            total += prob
-        elif face + effective_bonus >= target_ac:
+        # natural 20 always hits
+        if face == 20 or face + effective_bonus >= target_ac:
             total += prob
     return total
 
 
-def had(attack_bonus: int, target_ac: int, num_dice: int, die_sides: int, modifier: int = 0,
-        power_attack_bonus: int = 0, power_attack_penalty: int = 0,
-        advantage: bool = False, disadvantage: bool = False, crit_range: int = 20) -> float:
+def had(
+    attack_bonus: int,
+    target_ac: int,
+    num_dice: int,
+    die_sides: int,
+    modifier: int = 0,
+    power_attack_bonus: int = 0,
+    power_attack_penalty: int = 0,
+    advantage: bool = False,
+    disadvantage: bool = False,
+    crit_range: int = 20,
+) -> float:
     """
     Hit-adjusted damage (HAD): expected damage per attack, weighted by hit
     chance and crit chance. Per RAW, a crit doubles dice only -- flat
     modifiers (including power attack bonus damage) are not doubled.
     """
-    total_hit = hit_chance(attack_bonus, target_ac, power_attack_penalty,
-                            advantage, disadvantage)
-    crit_p = crit_chance(attack_bonus, target_ac, power_attack_penalty,
-                          advantage, disadvantage, crit_range)
+    total_hit = hit_chance(attack_bonus, target_ac, power_attack_penalty, advantage, disadvantage)
+    crit_p = crit_chance(
+        attack_bonus, target_ac, power_attack_penalty, advantage, disadvantage, crit_range
+    )
     normal_p = total_hit - crit_p
 
     normal_dmg = average_damage(num_dice, die_sides, modifier + power_attack_bonus)
@@ -98,10 +117,19 @@ def had(attack_bonus: int, target_ac: int, num_dice: int, die_sides: int, modifi
     return normal_p * normal_dmg + crit_p * crit_dmg
 
 
-def find_power_attack_breakeven(attack_bonus: int, num_dice: int, die_sides: int, modifier: int,
-                                 power_attack_bonus: int, power_attack_penalty: int,
-                                 advantage: bool = False, disadvantage: bool = False,
-                                 crit_range: int = 20, ac_min: int = 1, ac_max: int = 30):
+def find_power_attack_breakeven(
+    attack_bonus: int,
+    num_dice: int,
+    die_sides: int,
+    modifier: int,
+    power_attack_bonus: int,
+    power_attack_penalty: int,
+    advantage: bool = False,
+    disadvantage: bool = False,
+    crit_range: int = 20,
+    ac_min: int = 1,
+    ac_max: int = 30,
+):
     """
     Scan an AC range and compare a normal attack against a GWM/Sharpshooter
     -style power attack at each AC. Returns the per-AC results plus the
@@ -109,11 +137,30 @@ def find_power_attack_breakeven(attack_bonus: int, num_dice: int, die_sides: int
     """
     results = []
     for ac in range(ac_min, ac_max + 1):
-        normal = had(attack_bonus, ac, num_dice, die_sides, modifier,
-                     0, 0, advantage, disadvantage, crit_range)
-        power = had(attack_bonus, ac, num_dice, die_sides, modifier,
-                    power_attack_bonus, power_attack_penalty,
-                    advantage, disadvantage, crit_range)
+        normal = had(
+            attack_bonus,
+            ac,
+            num_dice,
+            die_sides,
+            modifier,
+            0,
+            0,
+            advantage,
+            disadvantage,
+            crit_range,
+        )
+        power = had(
+            attack_bonus,
+            ac,
+            num_dice,
+            die_sides,
+            modifier,
+            power_attack_bonus,
+            power_attack_penalty,
+            advantage,
+            disadvantage,
+            crit_range,
+        )
         results.append((ac, normal, power))
 
     crossovers = []

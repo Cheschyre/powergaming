@@ -48,7 +48,15 @@ npm run build
 ```
 
 Type-checks with `tsc -b` and then produces a static build in `dist/` via
-Vite. Nothing in this repo deploys that build yet -- that's part of a
-later step (wiring the home-lab `powergaming-test`/`powergaming-prod`
-stacks to serve it, likely via nginx or a small static file server
-alongside the API).
+Vite. The deployed stacks build this in `Dockerfile` and serve `dist/`
+through nginx, which also proxies `/api/*` to the backend (see
+`nginx.conf` and `../deploy/README.md`).
+
+## Linting
+
+```bash
+npm run lint
+```
+
+ESLint with the TypeScript, React Hooks and React Refresh rules
+(`eslint.config.js`). CI runs it with `--max-warnings=0`.
