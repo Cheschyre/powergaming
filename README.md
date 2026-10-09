@@ -10,8 +10,7 @@ field, and there's now a browser UI on top of the API.
 
 The original CLI script is now a full app with a versioned
 frontend/backend, a test environment, and a production environment on
-the home lab (steps 1-3 and 5-7 of the roadmap below are done; step 4's
-test suite is ongoing).
+the home lab (steps 1-8 of the roadmap below are done; step 9 is next).
 
 ## Structure
 
@@ -58,6 +57,7 @@ powergaming/
 │       └── cd-prod.yml        # version tag on main -> powergaming-prod
 ├── deploy/
 │   ├── docker-compose.yml     # the home-lab stack, shared by test and prod (pulls images, no bind mounts)
+│   ├── remote-deploy.sh       # runs on docker-host per deploy: backup, migrate, restart
 │   ├── .env.example           # template for each stack's .env on the VM
 │   └── README.md              # releasing, rollback, and one-time setup (VM, secrets, Tailscale)
 ├── scripts/
@@ -257,12 +257,12 @@ Response shape is identical to `/api/calculate`.
 1. ~~Backend API wrapping the existing logic~~ -- done.
 2. ~~Postgres + Alembic migrations, saved builds~~ -- done.
 3. ~~Frontend (React + TypeScript + Vite)~~ -- done.
-4. Full pytest suite -- backend well underway; the frontend test suite
-   is folded into step 8 below.
+4. ~~Test suites~~ -- done. Backend `pytest` (API, builds CRUD,
+   calculator, CORS) and, as of step 8, a frontend Vitest suite; both
+   run in CI.
 5. ~~GitHub Actions CI~~ -- done. Runs backend `pytest` and a
    frontend type-check + build on every push and PR, to every branch.
-   Doesn't yet run a linter (ruff/ESLint) -- worth adding once CI itself
-   is trusted and green.
+   Linting, frontend tests and an API-types check were added in step 8.
 6. ~~Stand up a `powergaming-test` stack on the home lab~~ -- done and
    verified end-to-end. Every push to `develop` builds `:develop` images,
    pushes them to GHCR, joins the tailnet, uploads the compose file and
@@ -278,23 +278,25 @@ Response shape is identical to `/api/calculate`.
    `cd-prod.yml` runs it for version tags (`v1.2.3`) on `main`, and the
    deploy waits for approval in the `production` GitHub Environment. See
    "Releasing to prod" in `deploy/README.md`.
-8. Pay down engineering debt -- the backlog in "Notes for later steps"
-   below, cleared out before step 9 adds more surface area to carry it
-   across:
-   - Linting: `ruff` for the backend, ESLint for the frontend, enforced
-     in `ci.yml`.
-   - Split `requirements.txt` into runtime vs. `requirements-dev.txt`.
-   - Generate `frontend/src/types.ts` from `/openapi.json` instead of
-     hand-maintaining it -- matters more once step 9 starts reshaping
-     the schema.
-   - Tighten CORS in `main.py` from `allow_origins=["*"]` to the real
-     frontend origins.
-   - Make migrations an explicit deploy step instead of `alembic
-     upgrade head` auto-running on every container start, with an
-     automatic pre-deploy `pg_dump` (today's manual version is under
-     "Database" in `deploy/README.md`).
-   - Frontend test suite (Vitest + React Testing Library) -- closes out
-     step 4.
+8. ~~Pay down engineering debt~~ -- done, before step 9 adds more
+   surface area to carry it across:
+   - Linting: `ruff` (lint + format) for the backend, ESLint for the
+     frontend, both enforced in `ci.yml`. See "Linting" above.
+   - `requirements.txt` is runtime-only (what the image ships);
+     `requirements-dev.txt` adds test/lint tooling.
+   - `frontend/src/types.ts` is now aliases over `api-schema.ts`, generated
+     from the backend's OpenAPI schema by `scripts/gen-api-types.sh`; CI
+     fails if it's stale. See "Changing an API request/response model".
+   - CORS: `allow_origins=["*"]` replaced by `CORS_ALLOW_ORIGINS` --
+     the Vite dev server by default, off entirely in the deployed stacks
+     (same-origin through nginx).
+   - Migrations run once per deploy from `deploy/remote-deploy.sh`, after
+     an automatic `pg_dump` (newest 10 kept per stack), instead of on
+     every container start. See "Database: migrations and backups" in
+     `deploy/README.md`.
+   - Frontend test suite: Vitest + React Testing Library, run in CI.
+   - Also: the frontend builds on Node 24 (Node 20 is end-of-life), and
+     GitHub Actions are on their Node 24 versions.
 9. Multiple distinct attacks per round -- today `num_attacks` just
    repeats one attack profile; real rounds mix attacks (e.g. greatsword
    x2 + a bonus-action handaxe), each with its own bonus and damage.
@@ -336,10 +338,9 @@ round that out fully before any save-based mechanics get added.
 
 ## Notes for later steps
 
-Most of the debt noted during steps 1-7 (linting, CORS, hand-maintained
-`types.ts`, `requirements.txt`, migrations-on-every-start) is scheduled
-into step 8 above rather than tracked here twice. What's left, not yet
-scheduled:
+The debt noted during steps 1-7 (linting, CORS, hand-maintained
+`types.ts`, `requirements.txt`, migrations-on-every-start, frontend
+tests) was cleared in step 8. What's left, not yet scheduled:
 
 - CI (`.github/workflows/ci.yml`) checks the code; CD
   (`cd-test.yml` / `cd-prod.yml`, both via `deploy-stack.yml`) builds,
