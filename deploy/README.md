@@ -22,7 +22,7 @@ build backend + frontend images, push to GHCR (:<tag> and :<commit sha>)
   -> checks docker-host answers `tailscale ping`
   -> checks docker-host's SSH host key against the pinned fingerprint
   -> scp's deploy/docker-compose.yml to /opt/powergaming-<stack>
-  -> runs deploy/remote-deploy.sh on the VM (piped over SSH):
+  -> uploads deploy/remote-deploy.sh and runs it on the VM:
        validate the new compose file + .env (with TAG=<tag>)
        pull the new images
        pg_dump the database to backups/          (newest 10 kept)

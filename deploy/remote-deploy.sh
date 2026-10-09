@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # Runs ON docker-host, as the deploy user, from the CD workflow
 # (.github/workflows/deploy-stack.yml), which uploads the new compose file
-# as docker-compose.yml.new and then pipes this script over SSH:
+# as docker-compose.yml.new plus this script, then runs it:
 #
-#   ssh deploy@docker-host bash -s -- /opt/powergaming-<stack> <image-tag> < remote-deploy.sh
+#   bash /opt/powergaming-<stack>/remote-deploy.sh /opt/powergaming-<stack> <image-tag>
+#
+# Always run it as a file -- never pipe it into `bash -s`: docker compose
+# exec/run read stdin and would swallow the rest of the script.
 #
 # Order matters -- nothing live changes until the new release has been
 # validated, the database backed up, and its migrations applied:
@@ -66,3 +69,4 @@ mv .env.new .env
 mv docker-compose.yml.new docker-compose.yml
 docker compose up -d --remove-orphans
 docker image prune -f
+echo "Deployed $image_tag to $stack_dir"

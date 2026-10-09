@@ -139,10 +139,16 @@ jobs:
           fi
           cat host_key >> ~/.ssh/known_hosts
 
-      # Uploads this commit's compose file, then runs deploy/remote-deploy.sh
-      # on the VM: validate, pull, pg_dump backup, migrate, then restart.
-      # Nothing live changes unless every step before the restart succeeds.
-      - name: Back up, migrate and deploy the stack
+      # Uploads this commit's compose file and deploy/remote-deploy.sh, then
+      # runs the script on the VM: validate, pull, pg_dump backup, migrate,
+      # then restart. Nothing live changes unless every step before the
+      # restart succeeds.
+      #
+      # The script is uploaded and run as a file, NOT piped in with
+      # `bash -s < script`: commands inside it (docker compose exec/run)
+      # read stdin and would swallow the rest of a piped script, ending the
+      # deploy early with exit code 0.
+      - name: Back up, migrate and restart the stack
         env:
           TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
           STACK: ${{ inputs.stack }}
@@ -155,5 +161,6 @@ jobs:
           STACK_DIR="/opt/powergaming-$STACK"
           scp -o BatchMode=yes deploy/docker-compose.yml \
             "$TARGET:$STACK_DIR/docker-compose.yml.new"
-          ssh -o BatchMode=yes "$TARGET" bash -s -- "$STACK_DIR" "$IMAGE_TAG" \
-            < deploy/remote-deploy.sh
+          scp -o BatchMode=yes deploy/remote-deploy.sh "$TARGET:$STACK_DIR/remote-deploy.sh"
+          ssh -o BatchMode=yes "$TARGET" bash "$STACK_DIR/remote-deploy.sh" "$STACK_DIR" "$IMAGE_TAG" \
+            < /dev/null
