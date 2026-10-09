@@ -42,7 +42,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    # Migrations are NOT run here: the deploy script runs them once, after
+    # a pg_dump backup, before this container is (re)started -- see
+    # deploy/remote-deploy.sh. So a restart never changes the schema.
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     ports:
       # Direct access for /docs and debugging. The frontend doesn't use
       # this -- it talks to the api container over the compose network

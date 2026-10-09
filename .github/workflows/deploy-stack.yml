@@ -139,12 +139,10 @@ jobs:
           fi
           cat host_key >> ~/.ssh/known_hosts
 
-      # Ships the compose file from this commit and records the image tag
-      # in the stack's .env as TAG, so the VM's own `docker compose ...`
-      # commands keep running exactly what was deployed. Both are
-      # validated on the VM (against the real .env) before either live
-      # file is replaced, so a bad deploy leaves the running stack alone.
-      - name: Upload compose file, pull and restart the stack
+      # Uploads this commit's compose file, then runs deploy/remote-deploy.sh
+      # on the VM: validate, pull, pg_dump backup, migrate, then restart.
+      # Nothing live changes unless every step before the restart succeeds.
+      - name: Back up, migrate and deploy the stack
         env:
           TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
           STACK: ${{ inputs.stack }}
@@ -157,16 +155,5 @@ jobs:
           STACK_DIR="/opt/powergaming-$STACK"
           scp -o BatchMode=yes deploy/docker-compose.yml \
             "$TARGET:$STACK_DIR/docker-compose.yml.new"
-          ssh -o BatchMode=yes "$TARGET" bash -s -- "$STACK_DIR" "$IMAGE_TAG" <<'EOF'
-          set -euo pipefail
-          cd "$1"
-          trap 'rm -f docker-compose.yml.new .env.new' EXIT
-          if [ ! -f .env ]; then echo "no .env in $1 -- see deploy/README.md" >&2; exit 1; fi
-          (umask 077; { grep -v '^TAG=' .env || true; echo "TAG=$2"; } > .env.new)
-          docker compose --env-file .env.new -f docker-compose.yml.new config -q
-          mv .env.new .env
-          mv docker-compose.yml.new docker-compose.yml
-          docker compose pull
-          docker compose up -d --remove-orphans
-          docker image prune -f
-          EOF
+          ssh -o BatchMode=yes "$TARGET" bash -s -- "$STACK_DIR" "$IMAGE_TAG" \
+            < deploy/remote-deploy.sh
