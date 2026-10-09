@@ -3,7 +3,7 @@
 # container so the frontend can be built without baking in a specific
 # API host (see VITE_API_BASE_URL below and nginx.conf).
 
-FROM node:20-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
