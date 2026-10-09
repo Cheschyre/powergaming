@@ -38,7 +38,8 @@ powergaming/
 │   │   ├── test_calculator.py    # unit tests on the math
 │   │   ├── test_api.py           # integration tests on /api/calculate, /api/breakeven
 │   │   └── test_builds_api.py    # integration tests on /api/builds
-│   ├── requirements.txt
+│   ├── requirements.txt       # runtime deps (what the API image installs)
+│   ├── requirements-dev.txt   # + test/lint tooling, for CI and local dev
 │   └── Dockerfile
 ├── frontend/
 │   ├── src/
@@ -127,7 +128,7 @@ don't need a real Postgres running:
 
 ```bash
 cd backend
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 pytest -v
 ```
 
