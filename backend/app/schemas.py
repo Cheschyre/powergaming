@@ -29,6 +29,11 @@ class CalculateRequest(BaseModel):
 
 
 class ACResult(BaseModel):
+    # Responses always include every field (power_* are null, not absent,
+    # when power attack is off) -- mark them required in the OpenAPI schema
+    # so generated frontend types match what the API actually returns.
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
     ac: int
     hit_chance: float
     crit_chance: float
@@ -123,9 +128,13 @@ class BuildRead(BuildBase):
     created_at: datetime
     updated_at: datetime
 
-    # Lets this model populate itself straight from a SQLAlchemy Build
-    # object's attributes, not just from a dict.
-    model_config = ConfigDict(from_attributes=True)
+    # from_attributes: populate straight from a SQLAlchemy Build object.
+    # json_schema_serialization_defaults_required: every field is always
+    # returned, so the OpenAPI schema (and generated frontend types) should
+    # say so, not mark defaulted fields optional.
+    model_config = ConfigDict(
+        from_attributes=True, json_schema_serialization_defaults_required=True
+    )
 
 
 class BuildCalculateRequest(BaseModel):

@@ -43,7 +43,8 @@ powergaming/
 │   └── Dockerfile
 ├── frontend/
 │   ├── src/
-│   │   ├── types.ts           # TS mirrors of backend/app/schemas.py
+│   │   ├── api-schema.ts      # GENERATED from backend/app/schemas.py (scripts/gen-api-types.sh)
+│   │   ├── types.ts           # friendly names for the generated API types
 │   │   ├── api.ts             # fetch wrapper, one function per endpoint
 │   │   ├── App.tsx            # tab switcher
 │   │   └── components/        # CalculatorPanel, BreakevenPanel, BuildsPanel, ...
@@ -59,6 +60,8 @@ powergaming/
 │   ├── docker-compose.yml     # the home-lab stack, shared by test and prod (pulls images, no bind mounts)
 │   ├── .env.example           # template for each stack's .env on the VM
 │   └── README.md              # releasing, rollback, and one-time setup (VM, secrets, Tailscale)
+├── scripts/
+│   └── gen-api-types.sh       # regenerate frontend API types from the backend schemas
 ├── docker-compose.yml        # LOCAL DEV ONLY, not the home-lab deployment
 ├── .env.example               # copy to .env to override DB credentials locally
 └── .gitignore
@@ -120,6 +123,18 @@ alembic upgrade head
 Always read the auto-generated migration file before running it --
 autogenerate is a good first draft, not a guarantee, especially for
 renames or data migrations.
+
+### Changing an API request/response model
+
+The frontend's TypeScript types are generated from the Pydantic models in
+`backend/app/schemas.py`, so after changing one, regenerate them:
+
+```bash
+scripts/gen-api-types.sh   # needs backend + frontend deps installed
+```
+
+That rewrites `frontend/openapi.json` and `frontend/src/api-schema.ts`;
+commit both. CI's "API types in sync" job fails if they're stale.
 
 ## Running tests
 

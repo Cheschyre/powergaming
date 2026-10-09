@@ -7,7 +7,8 @@ React + TypeScript + Vite, talking to the FastAPI backend in `../backend`.
 ```
 frontend/
 ├── src/
-│   ├── types.ts               # TS mirrors of backend/app/schemas.py
+│   ├── api-schema.ts          # GENERATED -- see ../scripts/gen-api-types.sh
+│   ├── types.ts               # friendly names for the generated API types
 │   ├── api.ts                 # fetch wrapper, one function per endpoint
 │   ├── App.tsx                # tab switcher: Calculator / Breakeven / Saved Builds
 │   ├── main.tsx                # React entry point
