@@ -42,6 +42,18 @@ Opens on `http://localhost:5173` by default and talks to the API at
 need to point it somewhere else, e.g. once there's a test/prod URL on the
 home lab).
 
+## Testing
+
+```bash
+npm test              # one run, as in CI
+npm run test:watch    # re-runs on save
+```
+
+Vitest + React Testing Library in jsdom. `src/api.ts` is tested against a
+mocked `fetch`; component tests mock the `api` module and drive the UI
+the way a user would. Tests sit next to the code (`*.test.ts(x)`), with
+shared setup and fixtures in `src/test/`.
+
 ## Building for production
 
 ```bash

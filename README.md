@@ -138,14 +138,25 @@ commit both. CI's "API types in sync" job fails if they're stale.
 
 ## Running tests
 
-Tests use an in-memory SQLite database (see `tests/conftest.py`), so they
-don't need a real Postgres running:
+Backend tests use an in-memory SQLite database (see `tests/conftest.py`),
+so they don't need a real Postgres running:
 
 ```bash
 cd backend
 pip install -r requirements-dev.txt
 pytest -v
 ```
+
+Frontend tests use Vitest + React Testing Library in jsdom, with the API
+module mocked, so they don't need the backend running:
+
+```bash
+cd frontend
+npm test              # or `npm run test:watch` while developing
+```
+
+Tests live next to the code they cover (`src/**/*.test.ts(x)`); shared
+setup and fixtures are in `src/test/`.
 
 ## Linting
 

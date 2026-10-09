@@ -43,7 +43,7 @@ jobs:
         run: pytest -v
 
   frontend:
-    name: Frontend build
+    name: Frontend tests and build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -63,6 +63,9 @@ jobs:
 
       - name: Lint (ESLint)
         run: npm run lint
+
+      - name: Unit tests (Vitest)
+        run: npm test
 
       - name: Type-check and build
         run: npm run build
