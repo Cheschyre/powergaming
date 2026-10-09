@@ -1,82 +1,26 @@
 /**
- * TypeScript mirrors of the backend's Pydantic schemas
- * (backend/app/schemas.py). Kept in sync by hand for now -- if this ever
- * drifts from the backend, that's a sign it's worth generating this file
- * from the OpenAPI schema FastAPI already produces at /openapi.json.
+ * Friendly names for the API's request/response types.
+ *
+ * Don't hand-edit the shapes here: they come from api-schema.ts, which is
+ * generated from the backend's Pydantic models (backend/app/schemas.py)
+ * via their OpenAPI schema. After changing a model, regenerate with
+ * `scripts/gen-api-types.sh` from the repo root -- CI fails if the
+ * committed files are stale.
  */
 
-export interface CalculateRequest {
-  attack_bonus: number;
-  ac_list: number[];
-  num_dice: number;
-  die_sides: number;
-  modifier: number;
-  num_attacks: number;
-  advantage: boolean;
-  disadvantage: boolean;
-  crit_range: number;
-  power_attack: boolean;
-  power_attack_bonus: number;
-  power_attack_penalty: number;
-}
+import type { components } from "./api-schema";
 
-export interface ACResult {
-  ac: number;
-  hit_chance: number;
-  crit_chance: number;
-  had: number;
-  total_had_per_round: number;
-  power_hit_chance: number | null;
-  power_crit_chance: number | null;
-  power_had: number | null;
-  power_total_had_per_round: number | null;
-}
+type Schemas = components["schemas"];
 
-export interface CalculateResponse {
-  results: ACResult[];
-}
+export type CalculateRequest = Schemas["CalculateRequest"];
+export type ACResult = Schemas["ACResult"];
+export type CalculateResponse = Schemas["CalculateResponse"];
 
-export interface BreakevenRequest {
-  attack_bonus: number;
-  num_dice: number;
-  die_sides: number;
-  modifier: number;
-  power_attack_bonus: number;
-  power_attack_penalty: number;
-  advantage: boolean;
-  disadvantage: boolean;
-  crit_range: number;
-  ac_min: number;
-  ac_max: number;
-}
+export type BreakevenRequest = Schemas["BreakevenRequest"];
+export type BreakevenRow = Schemas["BreakevenRow"];
+export type BreakevenResponse = Schemas["BreakevenResponse"];
 
-export interface BreakevenRow {
-  ac: number;
-  normal_had: number;
-  power_had: number;
-}
-
-export interface BreakevenResponse {
-  rows: BreakevenRow[];
-  crossovers: number[];
-}
-
-export interface Build {
-  id: number;
-  name: string;
-  attack_bonus: number;
-  num_dice: number;
-  die_sides: number;
-  modifier: number;
-  num_attacks: number;
-  advantage: boolean;
-  disadvantage: boolean;
-  crit_range: number;
-  power_attack: boolean;
-  power_attack_bonus: number;
-  power_attack_penalty: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export type BuildCreate = Omit<Build, "id" | "created_at" | "updated_at">;
+export type Build = Schemas["BuildRead"];
+export type BuildCreate = Schemas["BuildCreate"];
+export type BuildUpdate = Schemas["BuildUpdate"];
+export type BuildCalculateRequest = Schemas["BuildCalculateRequest"];

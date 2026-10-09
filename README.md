@@ -8,10 +8,9 @@ ranges, and a GWM/Sharpshooter-style power attack breakeven finder. Builds
 can be saved and re-run against new target ACs without re-entering every
 field, and there's now a browser UI on top of the API.
 
-This is **step 7** of turning the original CLI script into a full app with
-a versioned frontend/backend, a test environment, and a production
-environment on the home lab. See "Project roadmap" below for where this
-fits.
+The original CLI script is now a full app with a versioned
+frontend/backend, a test environment, and a production environment on
+the home lab (steps 1-8 of the roadmap below are done; step 9 is next).
 
 ## Structure
 
@@ -38,11 +37,13 @@ powergaming/
 │   │   ├── test_calculator.py    # unit tests on the math
 │   │   ├── test_api.py           # integration tests on /api/calculate, /api/breakeven
 │   │   └── test_builds_api.py    # integration tests on /api/builds
-│   ├── requirements.txt
+│   ├── requirements.txt       # runtime deps (what the API image installs)
+│   ├── requirements-dev.txt   # + test/lint tooling, for CI and local dev
 │   └── Dockerfile
 ├── frontend/
 │   ├── src/
-│   │   ├── types.ts           # TS mirrors of backend/app/schemas.py
+│   │   ├── api-schema.ts      # GENERATED from backend/app/schemas.py (scripts/gen-api-types.sh)
+│   │   ├── types.ts           # friendly names for the generated API types
 │   │   ├── api.ts             # fetch wrapper, one function per endpoint
 │   │   ├── App.tsx            # tab switcher
 │   │   └── components/        # CalculatorPanel, BreakevenPanel, BuildsPanel, ...
@@ -56,8 +57,11 @@ powergaming/
 │       └── cd-prod.yml        # version tag on main -> powergaming-prod
 ├── deploy/
 │   ├── docker-compose.yml     # the home-lab stack, shared by test and prod (pulls images, no bind mounts)
+│   ├── remote-deploy.sh       # runs on docker-host per deploy: backup, migrate, restart
 │   ├── .env.example           # template for each stack's .env on the VM
 │   └── README.md              # releasing, rollback, and one-time setup (VM, secrets, Tailscale)
+├── scripts/
+│   └── gen-api-types.sh       # regenerate frontend API types from the backend schemas
 ├── docker-compose.yml        # LOCAL DEV ONLY, not the home-lab deployment
 ├── .env.example               # copy to .env to override DB credentials locally
 └── .gitignore
@@ -120,16 +124,55 @@ Always read the auto-generated migration file before running it --
 autogenerate is a good first draft, not a guarantee, especially for
 renames or data migrations.
 
+### Changing an API request/response model
+
+The frontend's TypeScript types are generated from the Pydantic models in
+`backend/app/schemas.py`, so after changing one, regenerate them:
+
+```bash
+scripts/gen-api-types.sh   # needs backend + frontend deps installed
+```
+
+That rewrites `frontend/openapi.json` and `frontend/src/api-schema.ts`;
+commit both. CI's "API types in sync" job fails if they're stale.
+
 ## Running tests
 
-Tests use an in-memory SQLite database (see `tests/conftest.py`), so they
-don't need a real Postgres running:
+Backend tests use an in-memory SQLite database (see `tests/conftest.py`),
+so they don't need a real Postgres running:
 
 ```bash
 cd backend
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 pytest -v
 ```
+
+Frontend tests use Vitest + React Testing Library in jsdom, with the API
+module mocked, so they don't need the backend running:
+
+```bash
+cd frontend
+npm test              # or `npm run test:watch` while developing
+```
+
+Tests live next to the code they cover (`src/**/*.test.ts(x)`); shared
+setup and fixtures are in `src/test/`.
+
+## Linting
+
+CI fails on any lint or formatting problem, so run these before pushing:
+
+```bash
+cd backend
+ruff check .            # add --fix to apply safe fixes
+ruff format .           # CI runs `ruff format --check .`
+
+cd ../frontend
+npm run lint            # ESLint; fails on warnings too
+```
+
+Ruff is configured in `backend/pyproject.toml`, ESLint in
+`frontend/eslint.config.js`.
 
 ## API
 
@@ -214,12 +257,12 @@ Response shape is identical to `/api/calculate`.
 1. ~~Backend API wrapping the existing logic~~ -- done.
 2. ~~Postgres + Alembic migrations, saved builds~~ -- done.
 3. ~~Frontend (React + TypeScript + Vite)~~ -- done.
-4. Full pytest suite -- backend well underway; frontend has no tests yet,
-   worth adding once the UI settles.
-5. **GitHub Actions CI** -- this step. Runs backend `pytest` and a
+4. ~~Test suites~~ -- done. Backend `pytest` (API, builds CRUD,
+   calculator, CORS) and, as of step 8, a frontend Vitest suite; both
+   run in CI.
+5. ~~GitHub Actions CI~~ -- done. Runs backend `pytest` and a
    frontend type-check + build on every push and PR, to every branch.
-   Doesn't yet run a linter (ruff/ESLint) -- worth adding once CI itself
-   is trusted and green.
+   Linting, frontend tests and an API-types check were added in step 8.
 6. ~~Stand up a `powergaming-test` stack on the home lab~~ -- done and
    verified end-to-end. Every push to `develop` builds `:develop` images,
    pushes them to GHCR, joins the tailnet, uploads the compose file and
@@ -227,16 +270,77 @@ Response shape is identical to `/api/calculate`.
    (http://100.104.100.109:8081, API on `:8001`). The frontend has a real
    Dockerfile (Vite build served by nginx, proxying `/api/*` to the
    backend container).
-7. **Stand up `powergaming-prod`** -- this step. Same docker-host, same
-   compose file, separate directory/volume/ports
-   (`/opt/powergaming-prod`, `:8082`/`:8002`). The pipeline is now the
-   reusable `deploy-stack.yml`; `cd-prod.yml` runs it for version tags
-   (`v1.2.3`) on `main`, behind a `production` GitHub Environment that
-   can require your approval. Needs step 6 of `deploy/README.md` (prod
-   `.env`, optional approval gate) done, then a develop -> main merge and
-   a first tag.
+7. ~~Stand up `powergaming-prod`~~ -- done and verified end-to-end with
+   the first release, `v0.1.0`. Same docker-host and compose file as
+   test, but its own directory, database volume and ports
+   (`/opt/powergaming-prod`, http://100.104.100.109:8082, API on
+   `:8002`). Both stacks deploy through the reusable `deploy-stack.yml`;
+   `cd-prod.yml` runs it for version tags (`v1.2.3`) on `main`, and the
+   deploy waits for approval in the `production` GitHub Environment. See
+   "Releasing to prod" in `deploy/README.md`.
+8. ~~Pay down engineering debt~~ -- done, before step 9 adds more
+   surface area to carry it across:
+   - Linting: `ruff` (lint + format) for the backend, ESLint for the
+     frontend, both enforced in `ci.yml`. See "Linting" above.
+   - `requirements.txt` is runtime-only (what the image ships);
+     `requirements-dev.txt` adds test/lint tooling.
+   - `frontend/src/types.ts` is now aliases over `api-schema.ts`, generated
+     from the backend's OpenAPI schema by `scripts/gen-api-types.sh`; CI
+     fails if it's stale. See "Changing an API request/response model".
+   - CORS: `allow_origins=["*"]` replaced by `CORS_ALLOW_ORIGINS` --
+     the Vite dev server by default, off entirely in the deployed stacks
+     (same-origin through nginx).
+   - Migrations run once per deploy from `deploy/remote-deploy.sh`, after
+     an automatic `pg_dump` (newest 10 kept per stack), instead of on
+     every container start. See "Database: migrations and backups" in
+     `deploy/README.md`.
+   - Frontend test suite: Vitest + React Testing Library, run in CI.
+   - Also: the frontend builds on Node 24 (Node 20 is end-of-life), and
+     GitHub Actions are on their Node 24 versions.
+9. Multiple distinct attacks per round -- today `num_attacks` just
+   repeats one attack profile; real rounds mix attacks (e.g. greatsword
+   x2 + a bonus-action handaxe), each with its own bonus and damage.
+   - `CalculateRequest`/`BuildBase` become a list of attack entries
+     instead of one profile + a count, each with its own
+     `attack_bonus`, damage dice, and its own power-attack
+     (GWM/Sharpshooter) toggle -- per-attack, not round-global, so you
+     can power-attack with the greatsword but not the off-hand hit.
+   - Migration for existing saved builds -- each becomes a single-entry
+     attack list so current data carries over unchanged.
+   - UI: `CalculatorPanel`/`BuildsPanel` get a repeatable attack row in
+     place of the single form.
+10. Level/progression view -- add `character_level` (1-20) and
+    auto-derive proficiency bonus from it (+2 through +6 at the
+    standard breakpoints), shown across a level range alongside
+    hit/crit/HAD and the power-attack breakeven. `attack_bonus` stays
+    the one field it is today (not split into stat mod / proficiency /
+    item bonus) -- revisit that split if/when lite saved-character
+    sheets happen, where it'd actually pay for itself instead of just
+    reassembling into the same number.
+11. Sneak Attack (once-per-turn bonus damage) -- depends on step 9,
+    since "once per turn" only means something once attacks are
+    tracked individually. Applies to whichever attack the user
+    designates, not auto-assigned to the first one that would land.
+12. Other feats:
+    - Crossbow Expert (bonus-action off-hand shot without the usual
+      penalty) -- mostly falls out of step 9's multi-attack model once
+      that exists.
+    - Elven Accuracy (reroll one of two advantage dice) -- needs a new
+      "super-advantage" roll-distribution function alongside the
+      existing advantage/disadvantage one.
+    - Piercer (reroll 1s on damage dice) -- a damage-average formula
+      tweak. Slasher/Crusher are mostly non-damage secondary effects
+      and may not be worth modeling numerically.
+
+Spell-save damage (Fireball, Chromatic Orb, etc.) is intentionally not
+on this list yet -- the app is attack-roll-only today, and steps 9-12
+round that out fully before any save-based mechanics get added.
 
 ## Notes for later steps
+
+The debt noted during steps 1-7 (linting, CORS, hand-maintained
+`types.ts`, `requirements.txt`, migrations-on-every-start, frontend
+tests) was cleared in step 8. What's left, not yet scheduled:
 
 - CI (`.github/workflows/ci.yml`) checks the code; CD
   (`cd-test.yml` / `cd-prod.yml`, both via `deploy-stack.yml`) builds,
@@ -244,21 +348,7 @@ Response shape is identical to `/api/calculate`.
   to `powergaming-prod` on a version tag on `main`. Prod rebuilds images
   from the tag rather than promoting the exact `:develop` images test
   ran; worth switching to promotion if test and prod ever drift.
-- CORS in `main.py` is wide open (`allow_origins=["*"]`). Harmless for
-  `powergaming-test` since the frontend talks to the backend through
-  nginx's same-origin `/api/*` proxy (see `frontend/nginx.conf`), not
-  cross-origin -- but still worth tightening before anything reaches
-  further than the home lab.
-- `frontend/src/types.ts` is hand-maintained to match
-  `backend/app/schemas.py`. Fine at this size; if the API grows a lot,
-  consider generating it from FastAPI's `/openapi.json` instead.
-- `requirements.txt` mixes runtime and test dependencies for now — fine at
-  this size, worth splitting into `requirements-dev.txt` if it grows.
 - No auth yet on the `/api/builds` endpoints -- anyone who can reach the
-  API can read/edit/delete any build. Fine while this only runs on your
-  LAN; worth revisiting before it's reachable from outside the home lab.
-- Both compose files run `alembic upgrade head` on every api container
-  start -- including prod, so a release's migrations apply as soon as it
-  deploys. Fine at this size; worth making an explicit, deliberate step
-  (and adding a pre-deploy `pg_dump`) before the schema gets riskier.
-  See "Database" in `deploy/README.md` for the manual backup/rollback.
+  API can read/edit/delete any build. Fine while this is a single-person
+  tool on the LAN; revisit once more users are introduced (see "Builds &
+  comparison" territory -- not yet on this roadmap).

@@ -1,0 +1,1047 @@
+{
+  "components": {
+    "schemas": {
+      "ACResult": {
+        "properties": {
+          "ac": {
+            "title": "Ac",
+            "type": "integer"
+          },
+          "crit_chance": {
+            "title": "Crit Chance",
+            "type": "number"
+          },
+          "had": {
+            "title": "Had",
+            "type": "number"
+          },
+          "hit_chance": {
+            "title": "Hit Chance",
+            "type": "number"
+          },
+          "power_crit_chance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Power Crit Chance"
+          },
+          "power_had": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Power Had"
+          },
+          "power_hit_chance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Power Hit Chance"
+          },
+          "power_total_had_per_round": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Power Total Had Per Round"
+          },
+          "total_had_per_round": {
+            "title": "Total Had Per Round",
+            "type": "number"
+          }
+        },
+        "required": [
+          "ac",
+          "hit_chance",
+          "crit_chance",
+          "had",
+          "total_had_per_round",
+          "power_hit_chance",
+          "power_crit_chance",
+          "power_had",
+          "power_total_had_per_round"
+        ],
+        "title": "ACResult",
+        "type": "object"
+      },
+      "BreakevenRequest": {
+        "properties": {
+          "ac_max": {
+            "default": 30,
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Ac Max",
+            "type": "integer"
+          },
+          "ac_min": {
+            "default": 1,
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Ac Min",
+            "type": "integer"
+          },
+          "advantage": {
+            "default": false,
+            "title": "Advantage",
+            "type": "boolean"
+          },
+          "attack_bonus": {
+            "title": "Attack Bonus",
+            "type": "integer"
+          },
+          "crit_range": {
+            "default": 20,
+            "maximum": 20.0,
+            "minimum": 2.0,
+            "title": "Crit Range",
+            "type": "integer"
+          },
+          "die_sides": {
+            "maximum": 1000.0,
+            "minimum": 2.0,
+            "title": "Die Sides",
+            "type": "integer"
+          },
+          "disadvantage": {
+            "default": false,
+            "title": "Disadvantage",
+            "type": "boolean"
+          },
+          "modifier": {
+            "default": 0,
+            "title": "Modifier",
+            "type": "integer"
+          },
+          "num_dice": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Num Dice",
+            "type": "integer"
+          },
+          "power_attack_bonus": {
+            "title": "Power Attack Bonus",
+            "type": "integer"
+          },
+          "power_attack_penalty": {
+            "title": "Power Attack Penalty",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "attack_bonus",
+          "num_dice",
+          "die_sides",
+          "power_attack_bonus",
+          "power_attack_penalty"
+        ],
+        "title": "BreakevenRequest",
+        "type": "object"
+      },
+      "BreakevenResponse": {
+        "properties": {
+          "crossovers": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Crossovers",
+            "type": "array"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/BreakevenRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rows",
+          "crossovers"
+        ],
+        "title": "BreakevenResponse",
+        "type": "object"
+      },
+      "BreakevenRow": {
+        "properties": {
+          "ac": {
+            "title": "Ac",
+            "type": "integer"
+          },
+          "normal_had": {
+            "title": "Normal Had",
+            "type": "number"
+          },
+          "power_had": {
+            "title": "Power Had",
+            "type": "number"
+          }
+        },
+        "required": [
+          "ac",
+          "normal_had",
+          "power_had"
+        ],
+        "title": "BreakevenRow",
+        "type": "object"
+      },
+      "BuildCalculateRequest": {
+        "description": "AC list to run a saved build's stored attack profile against.",
+        "properties": {
+          "ac_list": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 30,
+            "minItems": 1,
+            "title": "Ac List",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ac_list"
+        ],
+        "title": "BuildCalculateRequest",
+        "type": "object"
+      },
+      "BuildCreate": {
+        "description": "Everything required to save a new build.",
+        "properties": {
+          "advantage": {
+            "default": false,
+            "title": "Advantage",
+            "type": "boolean"
+          },
+          "attack_bonus": {
+            "title": "Attack Bonus",
+            "type": "integer"
+          },
+          "crit_range": {
+            "default": 20,
+            "maximum": 20.0,
+            "minimum": 2.0,
+            "title": "Crit Range",
+            "type": "integer"
+          },
+          "die_sides": {
+            "maximum": 1000.0,
+            "minimum": 2.0,
+            "title": "Die Sides",
+            "type": "integer"
+          },
+          "disadvantage": {
+            "default": false,
+            "title": "Disadvantage",
+            "type": "boolean"
+          },
+          "modifier": {
+            "default": 0,
+            "title": "Modifier",
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "num_attacks": {
+            "default": 1,
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Num Attacks",
+            "type": "integer"
+          },
+          "num_dice": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Num Dice",
+            "type": "integer"
+          },
+          "power_attack": {
+            "default": false,
+            "title": "Power Attack",
+            "type": "boolean"
+          },
+          "power_attack_bonus": {
+            "default": 0,
+            "title": "Power Attack Bonus",
+            "type": "integer"
+          },
+          "power_attack_penalty": {
+            "default": 0,
+            "title": "Power Attack Penalty",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "attack_bonus",
+          "num_dice",
+          "die_sides"
+        ],
+        "title": "BuildCreate",
+        "type": "object"
+      },
+      "BuildRead": {
+        "properties": {
+          "advantage": {
+            "default": false,
+            "title": "Advantage",
+            "type": "boolean"
+          },
+          "attack_bonus": {
+            "title": "Attack Bonus",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "crit_range": {
+            "default": 20,
+            "maximum": 20.0,
+            "minimum": 2.0,
+            "title": "Crit Range",
+            "type": "integer"
+          },
+          "die_sides": {
+            "maximum": 1000.0,
+            "minimum": 2.0,
+            "title": "Die Sides",
+            "type": "integer"
+          },
+          "disadvantage": {
+            "default": false,
+            "title": "Disadvantage",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "modifier": {
+            "default": 0,
+            "title": "Modifier",
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "num_attacks": {
+            "default": 1,
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Num Attacks",
+            "type": "integer"
+          },
+          "num_dice": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Num Dice",
+            "type": "integer"
+          },
+          "power_attack": {
+            "default": false,
+            "title": "Power Attack",
+            "type": "boolean"
+          },
+          "power_attack_bonus": {
+            "default": 0,
+            "title": "Power Attack Bonus",
+            "type": "integer"
+          },
+          "power_attack_penalty": {
+            "default": 0,
+            "title": "Power Attack Penalty",
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "attack_bonus",
+          "num_dice",
+          "die_sides",
+          "modifier",
+          "num_attacks",
+          "advantage",
+          "disadvantage",
+          "crit_range",
+          "power_attack",
+          "power_attack_bonus",
+          "power_attack_penalty",
+          "id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "BuildRead",
+        "type": "object"
+      },
+      "BuildUpdate": {
+        "description": "A partial update -- every field optional, only what's sent gets changed.",
+        "properties": {
+          "advantage": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Advantage"
+          },
+          "attack_bonus": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attack Bonus"
+          },
+          "crit_range": {
+            "anyOf": [
+              {
+                "maximum": 20.0,
+                "minimum": 2.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crit Range"
+          },
+          "die_sides": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 2.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Die Sides"
+          },
+          "disadvantage": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disadvantage"
+          },
+          "modifier": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modifier"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "num_attacks": {
+            "anyOf": [
+              {
+                "maximum": 20.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Num Attacks"
+          },
+          "num_dice": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Num Dice"
+          },
+          "power_attack": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Power Attack"
+          },
+          "power_attack_bonus": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Power Attack Bonus"
+          },
+          "power_attack_penalty": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Power Attack Penalty"
+          }
+        },
+        "title": "BuildUpdate",
+        "type": "object"
+      },
+      "CalculateRequest": {
+        "properties": {
+          "ac_list": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 30,
+            "minItems": 1,
+            "title": "Ac List",
+            "type": "array"
+          },
+          "advantage": {
+            "default": false,
+            "title": "Advantage",
+            "type": "boolean"
+          },
+          "attack_bonus": {
+            "title": "Attack Bonus",
+            "type": "integer"
+          },
+          "crit_range": {
+            "default": 20,
+            "maximum": 20.0,
+            "minimum": 2.0,
+            "title": "Crit Range",
+            "type": "integer"
+          },
+          "die_sides": {
+            "maximum": 1000.0,
+            "minimum": 2.0,
+            "title": "Die Sides",
+            "type": "integer"
+          },
+          "disadvantage": {
+            "default": false,
+            "title": "Disadvantage",
+            "type": "boolean"
+          },
+          "modifier": {
+            "default": 0,
+            "title": "Modifier",
+            "type": "integer"
+          },
+          "num_attacks": {
+            "default": 1,
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Num Attacks",
+            "type": "integer"
+          },
+          "num_dice": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Num Dice",
+            "type": "integer"
+          },
+          "power_attack": {
+            "default": false,
+            "title": "Power Attack",
+            "type": "boolean"
+          },
+          "power_attack_bonus": {
+            "default": 0,
+            "title": "Power Attack Bonus",
+            "type": "integer"
+          },
+          "power_attack_penalty": {
+            "default": 0,
+            "title": "Power Attack Penalty",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "attack_bonus",
+          "ac_list",
+          "num_dice",
+          "die_sides"
+        ],
+        "title": "CalculateRequest",
+        "type": "object"
+      },
+      "CalculateResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ACResult"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "CalculateResponse",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Power Gaming Calculator API",
+    "version": "0.2.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/breakeven": {
+      "post": {
+        "operationId": "breakeven_api_breakeven_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BreakevenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BreakevenResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Breakeven"
+      }
+    },
+    "/api/builds": {
+      "get": {
+        "operationId": "list_builds_api_builds_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BuildRead"
+                  },
+                  "title": "Response List Builds Api Builds Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Builds",
+        "tags": [
+          "builds"
+        ]
+      },
+      "post": {
+        "operationId": "create_build_api_builds_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BuildCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Build",
+        "tags": [
+          "builds"
+        ]
+      }
+    },
+    "/api/builds/{build_id}": {
+      "delete": {
+        "operationId": "delete_build_api_builds__build_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "build_id",
+            "required": true,
+            "schema": {
+              "title": "Build Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Build",
+        "tags": [
+          "builds"
+        ]
+      },
+      "get": {
+        "operationId": "get_build_api_builds__build_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "build_id",
+            "required": true,
+            "schema": {
+              "title": "Build Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Build",
+        "tags": [
+          "builds"
+        ]
+      },
+      "patch": {
+        "operationId": "update_build_api_builds__build_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "build_id",
+            "required": true,
+            "schema": {
+              "title": "Build Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BuildUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Build",
+        "tags": [
+          "builds"
+        ]
+      }
+    },
+    "/api/builds/{build_id}/calculate": {
+      "post": {
+        "description": "Run a saved build's stored attack profile against a list of ACs --\nsame math as /api/calculate, just pulling the attack profile from the\ndatabase instead of the request body.",
+        "operationId": "calculate_for_build_api_builds__build_id__calculate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "build_id",
+            "required": true,
+            "schema": {
+              "title": "Build Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BuildCalculateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalculateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Calculate For Build",
+        "tags": [
+          "builds"
+        ]
+      }
+    },
+    "/api/calculate": {
+      "post": {
+        "operationId": "calculate_api_calculate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalculateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalculateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Calculate"
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Health Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    }
+  }
+}

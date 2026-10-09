@@ -22,10 +22,17 @@ build backend + frontend images, push to GHCR (:<tag> and :<commit sha>)
   -> checks docker-host answers `tailscale ping`
   -> checks docker-host's SSH host key against the pinned fingerprint
   -> scp's deploy/docker-compose.yml to /opt/powergaming-<stack>
-  -> on the VM: sets TAG=<tag> in .env, validates both with
-     `docker compose config`, only then swaps them in, then
-     docker compose pull && up -d
+  -> uploads deploy/remote-deploy.sh and runs it on the VM:
+       validate the new compose file + .env (with TAG=<tag>)
+       pull the new images
+       pg_dump the database to backups/          (newest 10 kept)
+       alembic upgrade head, once, from the new api image
+       only then swap in the new files and docker compose up -d
 ```
+
+If anything before the final step fails -- bad compose file, failed
+pull, failed backup, failed migration -- the live compose file, `.env`
+and running containers are left exactly as they were.
 
 The compose file lives only in this repo -- edit it here and push, never
 on the VM, since the next deploy overwrites it. The only VM-side file is
@@ -52,15 +59,52 @@ your approval in the Actions tab before touching prod.
 
 **Rolling back:** open the older tag's "CD - prod" run in the Actions tab
 and click **Re-run all jobs** -- it rebuilds that tag and redeploys it.
+If a release in between changed the database schema, restore the backup
+from before it first (see below) -- otherwise the rollback deploy stops
+with `Can't locate revision ...`, leaving the current version running.
 
-**Database:** the api container runs `alembic upgrade head` on start, so
-migrations in a release apply to prod automatically. Alembic has no
-automatic downgrade, so rolling back past a release that changed the
-schema needs a manual `alembic downgrade` -- back up first:
+## Database: migrations and backups
+
+Migrations run **once per deploy**, not on container start: the api
+container only runs `uvicorn`, and `remote-deploy.sh` runs
+`alembic upgrade head` in a one-off container from the new image, right
+after backing up. Restarting a container never changes the schema.
+Postgres runs each migration in a transaction, so one that fails
+partway leaves the schema as it was (and the deploy stops, old version
+still serving).
+
+Every deploy first writes a backup to
+`/opt/powergaming-<stack>/backups/<UTC time>-pre-<tag>.sql.gz` (mode 600,
+newest 10 kept per stack). To list them:
+
+```bash
+sudo ls -l /opt/powergaming-prod/backups
+```
+
+**Restoring a backup** (e.g. to roll back past a schema change). This
+replaces the stack's whole database with the backup's contents:
+
+```bash
+cd /opt/powergaming-prod                           # or /opt/powergaming-test
+B=backups/<file>.sql.gz                           # the backup to restore
+sudo -u deploy docker compose stop api
+sudo cat "$B" | gunzip | sudo -u deploy docker compose exec -T db sh -c \
+  'dropdb -U "$POSTGRES_USER" --force "$POSTGRES_DB" &&
+   createdb -U "$POSTGRES_USER" "$POSTGRES_DB" &&
+   psql -q -o /dev/null -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1'
+```
+
+Then redeploy the version that matches the backup (its `pre-<tag>` is
+the version that was running when it was taken): re-run that tag's
+"CD - prod" run, or for test, push to `develop`. The api stays stopped
+until that deploy starts it.
+
+**Manual backup** at any other time:
 
 ```bash
 cd /opt/powergaming-prod
-sudo -u deploy docker compose exec -T db pg_dump -U powergaming powergaming > ~/powergaming-prod-$(date +%F).sql
+sudo -u deploy docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+  | gzip > ~/powergaming-prod-$(date +%F).sql.gz
 ```
 
 ## One-time setup

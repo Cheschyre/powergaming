@@ -7,7 +7,8 @@ React + TypeScript + Vite, talking to the FastAPI backend in `../backend`.
 ```
 frontend/
 ├── src/
-│   ├── types.ts               # TS mirrors of backend/app/schemas.py
+│   ├── api-schema.ts          # GENERATED -- see ../scripts/gen-api-types.sh
+│   ├── types.ts               # friendly names for the generated API types
 │   ├── api.ts                 # fetch wrapper, one function per endpoint
 │   ├── App.tsx                # tab switcher: Calculator / Breakeven / Saved Builds
 │   ├── main.tsx                # React entry point
@@ -41,6 +42,18 @@ Opens on `http://localhost:5173` by default and talks to the API at
 need to point it somewhere else, e.g. once there's a test/prod URL on the
 home lab).
 
+## Testing
+
+```bash
+npm test              # one run, as in CI
+npm run test:watch    # re-runs on save
+```
+
+Vitest + React Testing Library in jsdom. `src/api.ts` is tested against a
+mocked `fetch`; component tests mock the `api` module and drive the UI
+the way a user would. Tests sit next to the code (`*.test.ts(x)`), with
+shared setup and fixtures in `src/test/`.
+
 ## Building for production
 
 ```bash
@@ -48,7 +61,15 @@ npm run build
 ```
 
 Type-checks with `tsc -b` and then produces a static build in `dist/` via
-Vite. Nothing in this repo deploys that build yet -- that's part of a
-later step (wiring the home-lab `powergaming-test`/`powergaming-prod`
-stacks to serve it, likely via nginx or a small static file server
-alongside the API).
+Vite. The deployed stacks build this in `Dockerfile` and serve `dist/`
+through nginx, which also proxies `/api/*` to the backend (see
+`nginx.conf` and `../deploy/README.md`).
+
+## Linting
+
+```bash
+npm run lint
+```
+
+ESLint with the TypeScript, React Hooks and React Refresh rules
+(`eslint.config.js`). CI runs it with `--max-warnings=0`.

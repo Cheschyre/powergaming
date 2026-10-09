@@ -35,11 +35,17 @@ services:
     restart: unless-stopped
     environment:
       - ENV=${APP_ENV:-test}
+      # Browsers reach the API through nginx on the frontend's own origin,
+      # so no cross-origin access is needed; empty = CORS off.
+      - CORS_ALLOW_ORIGINS=${CORS_ALLOW_ORIGINS:-}
       - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     depends_on:
       db:
         condition: service_healthy
-    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    # Migrations are NOT run here: the deploy script runs them once, after
+    # a pg_dump backup, before this container is (re)started -- see
+    # deploy/remote-deploy.sh. So a restart never changes the schema.
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     ports:
       # Direct access for /docs and debugging. The frontend doesn't use
       # this -- it talks to the api container over the compose network

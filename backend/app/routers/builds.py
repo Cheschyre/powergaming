@@ -1,7 +1,5 @@
 """Routes for saving, listing, editing and calculating from stored builds."""
 
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -17,7 +15,7 @@ def create_build(build: schemas.BuildCreate, db: Session = Depends(get_db)):
     return crud.create_build(db, build)
 
 
-@router.get("", response_model=List[schemas.BuildRead])
+@router.get("", response_model=list[schemas.BuildRead])
 def list_builds(db: Session = Depends(get_db)):
     return crud.list_builds(db)
 
@@ -58,9 +56,17 @@ def calculate_for_build(
         raise HTTPException(status_code=404, detail="Build not found")
 
     results = compute_ac_results(
-        db_build.attack_bonus, req.ac_list, db_build.num_dice, db_build.die_sides,
-        db_build.modifier, db_build.num_attacks, db_build.advantage, db_build.disadvantage,
-        db_build.crit_range, db_build.power_attack, db_build.power_attack_bonus,
+        db_build.attack_bonus,
+        req.ac_list,
+        db_build.num_dice,
+        db_build.die_sides,
+        db_build.modifier,
+        db_build.num_attacks,
+        db_build.advantage,
+        db_build.disadvantage,
+        db_build.crit_range,
+        db_build.power_attack,
+        db_build.power_attack_bonus,
         db_build.power_attack_penalty,
     )
     return schemas.CalculateResponse(results=results)
