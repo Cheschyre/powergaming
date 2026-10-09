@@ -1,5 +1,7 @@
 """FastAPI app exposing the power-gaming calculator over HTTP."""
 
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -14,16 +16,34 @@ from app.schemas import (
 )
 from app.service import compute_ac_results
 
-app = FastAPI(title="Power Gaming Calculator API", version="0.2.0")
+# CORS only matters when the frontend is served from a different origin
+# than the API -- i.e. local dev, where Vite (:5173) calls uvicorn (:8000).
+# The deployed stacks serve both through nginx on one origin, so they set
+# CORS_ALLOW_ORIGINS to empty, which leaves CORS off entirely.
+DEFAULT_CORS_ALLOW_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 
-# Wide open for local dev. Tighten this to the real frontend origin(s)
-# (e.g. https://powergaming.lab.cheschyre.com) once there's a frontend to protect against.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+
+def parse_origins(raw: str) -> list[str]:
+    """Comma-separated origins -> list, ignoring blanks and whitespace."""
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+
+def configure_cors(app: FastAPI, raw_origins: str) -> None:
+    """Allow cross-origin calls from exactly these origins, or none if empty."""
+    origins = parse_origins(raw_origins)
+    if not origins:
+        return
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        # Only what the frontend actually sends (see frontend/src/api.ts).
+        allow_methods=["GET", "POST", "PATCH", "DELETE"],
+        allow_headers=["Content-Type"],
+    )
+
+
+app = FastAPI(title="Power Gaming Calculator API", version="0.2.0")
+configure_cors(app, os.environ.get("CORS_ALLOW_ORIGINS", DEFAULT_CORS_ALLOW_ORIGINS))
 
 app.include_router(builds.router)
 

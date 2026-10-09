@@ -35,6 +35,9 @@ services:
     restart: unless-stopped
     environment:
       - ENV=${APP_ENV:-test}
+      # Browsers reach the API through nginx on the frontend's own origin,
+      # so no cross-origin access is needed; empty = CORS off.
+      - CORS_ALLOW_ORIGINS=${CORS_ALLOW_ORIGINS:-}
       - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     depends_on:
       db:
