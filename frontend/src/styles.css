@@ -244,3 +244,32 @@ ul.build-summary {
 .build-summary .attack-name {
   color: #ddd;
 }
+
+.build-card-actions,
+.form-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+button.secondary {
+  background: #2c2f36;
+  color: #e8e8ea;
+  border: 1px solid #3a3d44;
+  border-radius: 6px;
+  padding: 0.55rem 1.1rem;
+  cursor: pointer;
+}
+
+.build-card.editing {
+  border-color: #7c9eff;
+}
+
+.build-card.editing h3 {
+  margin-top: 0;
+}
+
+.build-card.editing .panel-form {
+  margin-bottom: 0;
+  border: none;
+  padding: 0;
+}

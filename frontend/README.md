@@ -18,6 +18,7 @@ frontend/
 │       ├── CalculatorPanel.tsx    # /api/calculate
 │       ├── BreakevenPanel.tsx     # /api/breakeven
 │       ├── BuildsPanel.tsx        # /api/builds CRUD + per-build calculate
+│       ├── BuildForm.tsx          # name + attack rows; new build and Edit
 │       ├── AttackListEditor.tsx   # repeatable attack rows (Duplicate/Remove/Add)
 │       ├── ResultsTable.tsx       # shared results table; groups identical attacks
 │       ├── NumberField.tsx        # small reusable form controls

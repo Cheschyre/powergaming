@@ -123,4 +123,95 @@ describe("BuildsPanel", () => {
       await within(card("Greatsword fighter")).findByText("404: Build not found"),
     ).toBeInTheDocument();
   });
+
+  describe("editing", () => {
+    it("opens the build in an editor, prefilled with its name and attacks", async () => {
+      const user = userEvent.setup();
+      vi.mocked(api.listBuilds).mockResolvedValue([build({ attacks: [greatsword, handaxe] })]);
+      render(<BuildsPanel />);
+      await screen.findByText("Greatsword fighter");
+
+      await user.click(within(card("Greatsword fighter")).getByRole("button", { name: "Edit" }));
+
+      const editor = screen.getByRole("heading", { name: "Editing Greatsword fighter" }).parentElement!;
+      expect(within(editor).getByLabelText("Build name")).toHaveValue("Greatsword fighter");
+      const rows = within(editor).getAllByRole("group", { name: /^Attack \d+$/ });
+      expect(rows.map((r) => within(r).getByLabelText("Name"))).toHaveLength(2);
+      expect(within(rows[1]).getByLabelText("Name")).toHaveValue("Handaxe");
+    });
+
+    it("saves name and attack changes, then shows the updated build", async () => {
+      const user = userEvent.setup();
+      vi.mocked(api.listBuilds).mockResolvedValue([build({ attacks: [greatsword] })]);
+      vi.mocked(api.updateBuild).mockResolvedValue(build());
+      render(<BuildsPanel />);
+      await screen.findByText("Greatsword fighter");
+
+      await user.click(screen.getByRole("button", { name: "Edit" }));
+      const editor = screen.getByRole("heading", { name: /^Editing/ }).parentElement!;
+      await user.clear(within(editor).getByLabelText("Build name"));
+      await user.type(within(editor).getByLabelText("Build name"), "Champion");
+      await user.click(within(editor).getByRole("button", { name: "Duplicate" }));
+      vi.mocked(api.listBuilds).mockResolvedValue([
+        build({ name: "Champion", attacks: [greatsword, greatsword] }),
+      ]);
+      await user.click(within(editor).getByRole("button", { name: "Save changes" }));
+
+      expect(api.updateBuild).toHaveBeenCalledWith(1, {
+        name: "Champion",
+        attacks: [greatsword, greatsword],
+      });
+      expect(await screen.findByText("Champion")).toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: /^Editing/ })).not.toBeInTheDocument();
+      expect(within(card("Champion")).getByRole("listitem")).toHaveTextContent("Greatsword ×2");
+    });
+
+    it("cancel discards changes without calling the API", async () => {
+      const user = userEvent.setup();
+      vi.mocked(api.listBuilds).mockResolvedValue([build()]);
+      render(<BuildsPanel />);
+      await screen.findByText("Greatsword fighter");
+
+      await user.click(screen.getByRole("button", { name: "Edit" }));
+      await user.type(screen.getAllByLabelText("Build name")[0], " II");
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(api.updateBuild).not.toHaveBeenCalled();
+      expect(screen.getByText("Greatsword fighter")).toBeInTheDocument();
+      // Re-opening starts from the saved build again, not the discarded edit.
+      await user.click(screen.getByRole("button", { name: "Edit" }));
+      expect(screen.getAllByLabelText("Build name")[0]).toHaveValue("Greatsword fighter");
+    });
+
+    it("keeps the editor open and shows the error when saving fails", async () => {
+      const user = userEvent.setup();
+      vi.mocked(api.listBuilds).mockResolvedValue([build()]);
+      vi.mocked(api.updateBuild).mockRejectedValue(new Error("422: name too long"));
+      render(<BuildsPanel />);
+      await screen.findByText("Greatsword fighter");
+
+      await user.click(screen.getByRole("button", { name: "Edit" }));
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+      expect(await screen.findByText("422: name too long")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: /^Editing/ })).toBeInTheDocument();
+    });
+
+    it("drops results from before the edit", async () => {
+      const user = userEvent.setup();
+      vi.mocked(api.listBuilds).mockResolvedValue([build()]);
+      vi.mocked(api.calculateForBuild).mockResolvedValue({ results: [acResult({}, 2)] });
+      vi.mocked(api.updateBuild).mockResolvedValue(build());
+      render(<BuildsPanel />);
+      await screen.findByText("Greatsword fighter");
+
+      await user.click(screen.getByRole("button", { name: "Run" }));
+      expect(await screen.findByRole("table")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Edit" }));
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+      await screen.findByRole("button", { name: "Edit" });
+      expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    });
+  });
 });

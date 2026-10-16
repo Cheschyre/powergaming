@@ -320,10 +320,15 @@ Response shape is identical to `/api/calculate`.
    - UI: repeatable attack rows with Duplicate/Remove; the results table
      stays compact when all attacks match and groups identical attacks
      ("Greatsword (PA) ×2 | Handaxe") when they differ.
-10. Level/progression view -- add `character_level` (1-20) and
-    auto-derive proficiency bonus from it (+2 through +6 at the
-    standard breakpoints), shown across a level range alongside
-    hit/crit/HAD and the power-attack breakeven. `attack_bonus` stays
+10. Level/progression view, in three parts:
+    - ~~Edit saved builds in the UI~~ -- done. Each saved build has an
+      Edit button that opens the same name + attack-row form, prefilled;
+      also how builds converted by migration `0002` get real weapon
+      names instead of "Attack".
+    - Add `character_level` (1-20) to builds and auto-derive proficiency
+      bonus from it (+2 through +6 at the standard breakpoints).
+    - Show hit/crit/HAD and the power-attack breakeven across a level
+      range. `attack_bonus` stays
     the one field it is today (not split into stat mod / proficiency /
     item bonus) -- revisit that split if/when lite saved-character
     sheets happen, where it'd actually pay for itself instead of just

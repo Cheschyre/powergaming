@@ -5,6 +5,9 @@ import { afterEach, vi } from "vitest";
 
 afterEach(() => {
   cleanup();
+  // Reset recorded calls AND implementations of every mock, including
+  // vi.mock() automocks, so nothing leaks from one test into the next.
+  vi.resetAllMocks();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
