@@ -8,6 +8,7 @@ import type {
   BreakevenResponse,
   Build,
   BuildCreate,
+  BuildUpdate,
   CalculateRequest,
   CalculateResponse,
 } from "./types";
@@ -62,6 +63,13 @@ export function createBuild(build: BuildCreate): Promise<Build> {
   return request<Build>("/api/builds", {
     method: "POST",
     body: JSON.stringify(build),
+  });
+}
+
+export function updateBuild(id: number, changes: BuildUpdate): Promise<Build> {
+  return request<Build>(`/api/builds/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(changes),
   });
 }
 

@@ -39,6 +39,14 @@ describe("api", () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ ac_list: [12, 15] });
   });
 
+  it("PATCHes build changes", async () => {
+    const fetchMock = mockFetch(json({ id: 4 }));
+    await api.updateBuild(4, { name: "Renamed" });
+    expect(fetchMock.mock.calls[0][0]).toBe("http://api.test/api/builds/4");
+    expect(fetchMock.mock.calls[0][1].method).toBe("PATCH");
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ name: "Renamed" });
+  });
+
   it("returns undefined for 204 No Content", async () => {
     const fetchMock = mockFetch(new Response(null, { status: 204 }));
     await expect(api.deleteBuild(3)).resolves.toBeUndefined();

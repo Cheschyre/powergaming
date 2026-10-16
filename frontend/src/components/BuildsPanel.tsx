@@ -1,20 +1,23 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { calculateForBuild, createBuild, deleteBuild, listBuilds } from "../api";
-import { describeAttack, groupAttacks, groupLabel, newAttack, parseAcList } from "../attacks";
-import type { ACResult, AttackEntry, Build } from "../types";
-import AttackListEditor from "./AttackListEditor";
+import { useEffect, useState } from "react";
+import { calculateForBuild, createBuild, deleteBuild, listBuilds, updateBuild } from "../api";
+import { describeAttack, groupAttacks, groupLabel, parseAcList } from "../attacks";
+import type { ACResult, Build, BuildCreate } from "../types";
+import BuildForm from "./BuildForm";
 import ResultsTable from "./ResultsTable";
 
 const DEFAULT_AC_TEXT = "12, 15, 18";
+
+function without<T>(record: Record<number, T>, key: number): Record<number, T> {
+  const copy = { ...record };
+  delete copy[key];
+  return copy;
+}
 
 export default function BuildsPanel() {
   const [builds, setBuilds] = useState<Build[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [name, setName] = useState("New Build");
-  const [attacks, setAttacks] = useState<AttackEntry[]>([newAttack()]);
-  const [createError, setCreateError] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const [runAcText, setRunAcText] = useState<Record<number, string>>({});
   const [runResults, setRunResults] = useState<Record<number, ACResult[]>>({});
@@ -33,20 +36,19 @@ export default function BuildsPanel() {
     refresh();
   }, []);
 
-  async function handleCreate(e: FormEvent) {
-    e.preventDefault();
-    setCreateError(null);
-    setCreating(true);
-    try {
-      await createBuild({ name, attacks });
-      setName("New Build");
-      setAttacks([newAttack()]);
-      await refresh();
-    } catch (err) {
-      setCreateError(err instanceof Error ? err.message : "Couldn't save build.");
-    } finally {
-      setCreating(false);
-    }
+  async function handleCreate(build: BuildCreate) {
+    await createBuild(build);
+    await refresh();
+  }
+
+  async function handleSaveEdit(id: number, build: BuildCreate) {
+    await updateBuild(id, build);
+    // Old results were for the old attacks -- drop them rather than show
+    // numbers that no longer match the build.
+    setRunResults((prev) => without(prev, id));
+    setRunError((prev) => without(prev, id));
+    setEditingId(null);
+    await refresh();
   }
 
   async function handleDelete(id: number) {
@@ -73,13 +75,28 @@ export default function BuildsPanel() {
       {loadError && <p className="error">{loadError}</p>}
       {builds.length === 0 && !loadError && <p>No builds saved yet.</p>}
 
-      {builds.map((build) => (
+      {builds.map((build) =>
+        editingId === build.id ? (
+          <div className="build-card editing" key={build.id}>
+            <h3>Editing {build.name}</h3>
+            <BuildForm
+              initial={{ name: build.name, attacks: build.attacks }}
+              submitLabel="Save changes"
+              busyLabel="Saving…"
+              onSubmit={(changes) => handleSaveEdit(build.id, changes)}
+              onCancel={() => setEditingId(null)}
+            />
+          </div>
+        ) : (
         <div className="build-card" key={build.id}>
           <div className="build-card-header">
             <strong>{build.name}</strong>
-            <button onClick={() => handleDelete(build.id)} className="danger">
-              Delete
-            </button>
+            <div className="build-card-actions">
+              <button onClick={() => setEditingId(build.id)}>Edit</button>
+              <button onClick={() => handleDelete(build.id)} className="danger">
+                Delete
+              </button>
+            </div>
           </div>
           <ul className="build-summary">
             {groupAttacks(build.attacks).map((g) => (
@@ -106,22 +123,16 @@ export default function BuildsPanel() {
             <ResultsTable results={runResults[build.id]} attacks={build.attacks} />
           )}
         </div>
-      ))}
+        ),
+      )}
 
       <h3>Save a new build</h3>
-      <form onSubmit={handleCreate} className="panel-form">
-        <div className="field-grid">
-          <label className="field">
-            <span>Build name</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} />
-          </label>
-        </div>
-        <AttackListEditor attacks={attacks} onChange={setAttacks} />
-        {createError && <p className="error">{createError}</p>}
-        <button type="submit" disabled={creating}>
-          {creating ? "Saving…" : "Save build"}
-        </button>
-      </form>
+      <BuildForm
+        submitLabel="Save build"
+        busyLabel="Saving…"
+        onSubmit={handleCreate}
+        resetOnSuccess
+      />
     </section>
   );
 }
