@@ -4,45 +4,69 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+MAX_ATTACKS_PER_ROUND = 20
 
-class CalculateRequest(BaseModel):
+
+def _check_ac_list(v: list[int]) -> list[int]:
+    for ac in v:
+        if not (1 <= ac <= 30):
+            raise ValueError("Each AC must be between 1 and 30.")
+    return v
+
+
+class AttackEntry(BaseModel):
+    """One attack roll in a round, with everything that can differ between
+    attacks -- including whether this particular attack uses power attack
+    (GWM/Sharpshooter). A round is a list of these; repeat an entry for
+    Extra Attack rather than using a count."""
+
+    name: str = Field("Attack", min_length=1, max_length=50)
     attack_bonus: int
-    ac_list: list[int] = Field(..., min_length=1, max_length=30)
     num_dice: int = Field(..., ge=1, le=100)
     die_sides: int = Field(..., ge=2, le=1000)
     modifier: int = 0
-    num_attacks: int = Field(1, ge=1, le=20)
+    crit_range: int = Field(20, ge=2, le=20)
     advantage: bool = False
     disadvantage: bool = False
-    crit_range: int = Field(20, ge=2, le=20)
     power_attack: bool = False
     power_attack_bonus: int = 0
     power_attack_penalty: int = 0
 
-    @field_validator("ac_list")
-    @classmethod
-    def ac_in_range(cls, v: list[int]) -> list[int]:
-        for ac in v:
-            if not (1 <= ac <= 30):
-                raise ValueError("Each AC must be between 1 and 30.")
-        return v
+
+class CalculateRequest(BaseModel):
+    ac_list: list[int] = Field(..., min_length=1, max_length=30)
+    attacks: list[AttackEntry] = Field(..., min_length=1, max_length=MAX_ATTACKS_PER_ROUND)
+
+    _ac_in_range = field_validator("ac_list")(_check_ac_list)
 
 
-class ACResult(BaseModel):
-    # Responses always include every field (power_* are null, not absent,
-    # when power attack is off) -- mark them required in the OpenAPI schema
-    # so generated frontend types match what the API actually returns.
-    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+class AttackResult(BaseModel):
+    """One attack's numbers against one AC, with its own power-attack
+    setting applied."""
 
-    ac: int
     hit_chance: float
     crit_chance: float
     had: float
-    total_had_per_round: float
-    power_hit_chance: float | None = None
-    power_crit_chance: float | None = None
-    power_had: float | None = None
-    power_total_had_per_round: float | None = None
+
+
+class ACResult(BaseModel):
+    """A full round against one AC. `attacks` is in the same order as the
+    request's attack list."""
+
+    # Every field is always returned (total_had_without_power_attack is null,
+    # not absent, when no attack uses power attack) -- mark them required in
+    # the OpenAPI schema so generated frontend types match the real API.
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+    ac: int
+    attacks: list[AttackResult]
+    # Expected damage for the whole round. Computed here rather than summed
+    # by clients: once-per-turn effects (Sneak Attack, roadmap step 11)
+    # make the round total more than a plain sum.
+    total_had: float
+    # The same round with every attack's power attack switched off -- for
+    # comparing; null when no attack uses power attack.
+    total_had_without_power_attack: float | None = None
 
 
 class CalculateResponse(BaseModel):
@@ -87,17 +111,7 @@ class BreakevenResponse(BaseModel):
 
 class BuildBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
-    attack_bonus: int
-    num_dice: int = Field(..., ge=1, le=100)
-    die_sides: int = Field(..., ge=2, le=1000)
-    modifier: int = 0
-    num_attacks: int = Field(1, ge=1, le=20)
-    advantage: bool = False
-    disadvantage: bool = False
-    crit_range: int = Field(20, ge=2, le=20)
-    power_attack: bool = False
-    power_attack_bonus: int = 0
-    power_attack_penalty: int = 0
+    attacks: list[AttackEntry] = Field(..., min_length=1, max_length=MAX_ATTACKS_PER_ROUND)
 
 
 class BuildCreate(BuildBase):
@@ -107,20 +121,11 @@ class BuildCreate(BuildBase):
 
 
 class BuildUpdate(BaseModel):
-    """A partial update -- every field optional, only what's sent gets changed."""
+    """A partial update -- send only what changes. `attacks`, if sent,
+    replaces the whole list."""
 
     name: str | None = Field(None, min_length=1, max_length=100)
-    attack_bonus: int | None = None
-    num_dice: int | None = Field(None, ge=1, le=100)
-    die_sides: int | None = Field(None, ge=2, le=1000)
-    modifier: int | None = None
-    num_attacks: int | None = Field(None, ge=1, le=20)
-    advantage: bool | None = None
-    disadvantage: bool | None = None
-    crit_range: int | None = Field(None, ge=2, le=20)
-    power_attack: bool | None = None
-    power_attack_bonus: int | None = None
-    power_attack_penalty: int | None = None
+    attacks: list[AttackEntry] | None = Field(None, min_length=1, max_length=MAX_ATTACKS_PER_ROUND)
 
 
 class BuildRead(BuildBase):
@@ -138,14 +143,8 @@ class BuildRead(BuildBase):
 
 
 class BuildCalculateRequest(BaseModel):
-    """AC list to run a saved build's stored attack profile against."""
+    """AC list to run a saved build's stored attacks against."""
 
     ac_list: list[int] = Field(..., min_length=1, max_length=30)
 
-    @field_validator("ac_list")
-    @classmethod
-    def ac_in_range(cls, v: list[int]) -> list[int]:
-        for ac in v:
-            if not (1 <= ac <= 30):
-                raise ValueError("Each AC must be between 1 and 30.")
-        return v
+    _ac_in_range = field_validator("ac_list")(_check_ac_list)

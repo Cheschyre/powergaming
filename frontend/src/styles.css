@@ -167,3 +167,80 @@ button.danger {
   color: #f0f0f0;
   padding: 0.45rem 0.6rem;
 }
+
+.attack-list {
+  margin-bottom: 1rem;
+}
+
+.attack-row {
+  border: 1px solid #2c2f36;
+  border-radius: 6px;
+  padding: 0.75rem 1rem 0.25rem;
+  margin: 0 0 0.75rem;
+}
+
+.attack-row-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.6rem;
+}
+
+.attack-row-header legend {
+  padding: 0;
+  font-weight: 600;
+  color: #ddd;
+}
+
+.attack-row-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.attack-row-actions button,
+.add-attack {
+  background: #2c2f36;
+  color: #e8e8ea;
+  border: 1px solid #3a3d44;
+  border-radius: 6px;
+  padding: 0.35rem 0.8rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.attack-row-actions button.danger {
+  background: #4a2a2e;
+  border-color: #6b3a40;
+}
+
+.attack-row-actions button:disabled,
+.add-attack:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.results-table caption {
+  text-align: left;
+  color: #bbb;
+  font-weight: 600;
+  padding-bottom: 0.4rem;
+}
+
+.results-table.grouped .group-head {
+  text-align: center;
+  color: #ddd;
+  border-bottom: 1px solid #3a3d44;
+}
+
+.results-table .round-total {
+  font-weight: 600;
+}
+
+ul.build-summary {
+  list-style: none;
+  padding: 0;
+}
+
+.build-summary .attack-name {
+  color: #ddd;
+}

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import * as api from "./api";
+import { greatsword } from "./test/fixtures";
 
 function mockFetch(response: Response) {
   const fetchMock = vi.fn().mockResolvedValue(response);
@@ -18,18 +19,8 @@ describe("api", () => {
   it("POSTs JSON to the configured base URL and returns the parsed body", async () => {
     const fetchMock = mockFetch(json({ results: [] }));
     const req = {
-      attack_bonus: 5,
       ac_list: [15],
-      num_dice: 1,
-      die_sides: 8,
-      modifier: 3,
-      num_attacks: 1,
-      advantage: false,
-      disadvantage: false,
-      crit_range: 20,
-      power_attack: false,
-      power_attack_bonus: 0,
-      power_attack_penalty: 0,
+      attacks: [greatsword, { ...greatsword, power_attack: true }],
     };
 
     await expect(api.calculate(req)).resolves.toEqual({ results: [] });

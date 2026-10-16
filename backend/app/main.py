@@ -42,7 +42,7 @@ def configure_cors(app: FastAPI, raw_origins: str) -> None:
     )
 
 
-app = FastAPI(title="Power Gaming Calculator API", version="0.2.0")
+app = FastAPI(title="Power Gaming Calculator API", version="0.3.0")
 configure_cors(app, os.environ.get("CORS_ALLOW_ORIGINS", DEFAULT_CORS_ALLOW_ORIGINS))
 
 app.include_router(builds.router)
@@ -55,21 +55,7 @@ def health() -> dict[str, str]:
 
 @app.post("/api/calculate", response_model=CalculateResponse)
 def calculate(req: CalculateRequest) -> CalculateResponse:
-    results = compute_ac_results(
-        req.attack_bonus,
-        req.ac_list,
-        req.num_dice,
-        req.die_sides,
-        req.modifier,
-        req.num_attacks,
-        req.advantage,
-        req.disadvantage,
-        req.crit_range,
-        req.power_attack,
-        req.power_attack_bonus,
-        req.power_attack_penalty,
-    )
-    return CalculateResponse(results=results)
+    return CalculateResponse(results=compute_ac_results(req.attacks, req.ac_list))
 
 
 @app.post("/api/breakeven", response_model=BreakevenResponse)

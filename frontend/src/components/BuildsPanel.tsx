@@ -1,26 +1,18 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { calculateForBuild, createBuild, deleteBuild, listBuilds } from "../api";
-import type { ACResult, Build } from "../types";
-import CheckboxField from "./CheckboxField";
-import NumberField from "./NumberField";
+import { describeAttack, groupAttacks, groupLabel, newAttack, parseAcList } from "../attacks";
+import type { ACResult, AttackEntry, Build } from "../types";
+import AttackListEditor from "./AttackListEditor";
 import ResultsTable from "./ResultsTable";
+
+const DEFAULT_AC_TEXT = "12, 15, 18";
 
 export default function BuildsPanel() {
   const [builds, setBuilds] = useState<Build[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [name, setName] = useState("New Build");
-  const [attackBonus, setAttackBonus] = useState(5);
-  const [numDice, setNumDice] = useState(1);
-  const [dieSides, setDieSides] = useState(8);
-  const [modifier, setModifier] = useState(3);
-  const [numAttacks, setNumAttacks] = useState(1);
-  const [advantage, setAdvantage] = useState(false);
-  const [disadvantage, setDisadvantage] = useState(false);
-  const [critRange, setCritRange] = useState(20);
-  const [powerAttack, setPowerAttack] = useState(false);
-  const [powerAttackBonus, setPowerAttackBonus] = useState(10);
-  const [powerAttackPenalty, setPowerAttackPenalty] = useState(-5);
+  const [attacks, setAttacks] = useState<AttackEntry[]>([newAttack()]);
   const [createError, setCreateError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -46,21 +38,9 @@ export default function BuildsPanel() {
     setCreateError(null);
     setCreating(true);
     try {
-      await createBuild({
-        name,
-        attack_bonus: attackBonus,
-        num_dice: numDice,
-        die_sides: dieSides,
-        modifier,
-        num_attacks: numAttacks,
-        advantage,
-        disadvantage,
-        crit_range: critRange,
-        power_attack: powerAttack,
-        power_attack_bonus: powerAttackBonus,
-        power_attack_penalty: powerAttackPenalty,
-      });
+      await createBuild({ name, attacks });
       setName("New Build");
+      setAttacks([newAttack()]);
       await refresh();
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : "Couldn't save build.");
@@ -75,15 +55,8 @@ export default function BuildsPanel() {
   }
 
   async function handleRun(id: number) {
-    const text = runAcText[id] ?? "12, 15, 18";
-    const acList = text
-      .split(",")
-      .map((part) => part.trim())
-      .filter((part) => part.length > 0)
-      .map(Number);
-
     try {
-      const response = await calculateForBuild(id, acList);
+      const response = await calculateForBuild(id, parseAcList(runAcText[id] ?? DEFAULT_AC_TEXT));
       setRunResults((prev) => ({ ...prev, [id]: response.results }));
       setRunError((prev) => ({ ...prev, [id]: "" }));
     } catch (err) {
@@ -108,73 +81,42 @@ export default function BuildsPanel() {
               Delete
             </button>
           </div>
-          <p className="build-summary">
-            +{build.attack_bonus} attack, {build.num_dice}d{build.die_sides}+{build.modifier}{" "}
-            damage, {build.num_attacks} attack{build.num_attacks > 1 ? "s" : ""}/round
-            {build.power_attack &&
-              ` – power attack: +${build.power_attack_bonus} dmg / ${build.power_attack_penalty} to hit`}
-          </p>
+          <ul className="build-summary">
+            {groupAttacks(build.attacks).map((g) => (
+              <li key={g.indices[0]}>
+                <span className="attack-name">{groupLabel(g)}</span>: {describeAttack(g.attack)}
+              </li>
+            ))}
+          </ul>
 
           <div className="run-row">
             <input
-              value={runAcText[build.id] ?? "12, 15, 18"}
+              value={runAcText[build.id] ?? DEFAULT_AC_TEXT}
               onChange={(e) =>
                 setRunAcText((prev) => ({ ...prev, [build.id]: e.target.value }))
               }
               placeholder="Target AC(s), comma-separated"
+              aria-label={`Target ACs for ${build.name}`}
             />
             <button onClick={() => handleRun(build.id)}>Run</button>
           </div>
 
           {runError[build.id] && <p className="error">{runError[build.id]}</p>}
-          {runResults[build.id] && <ResultsTable results={runResults[build.id]} />}
+          {runResults[build.id] && (
+            <ResultsTable results={runResults[build.id]} attacks={build.attacks} />
+          )}
         </div>
       ))}
 
       <h3>Save a new build</h3>
       <form onSubmit={handleCreate} className="panel-form">
-        <label className="field">
-          <span>Name</span>
-          <input value={name} onChange={(e) => setName(e.target.value)} />
-        </label>
         <div className="field-grid">
-          <NumberField label="Attack bonus" value={attackBonus} onChange={setAttackBonus} />
-          <NumberField label="Number of dice" value={numDice} onChange={setNumDice} min={1} />
-          <NumberField label="Die sides" value={dieSides} onChange={setDieSides} min={2} />
-          <NumberField label="Damage modifier" value={modifier} onChange={setModifier} />
-          <NumberField
-            label="Attacks per round"
-            value={numAttacks}
-            onChange={setNumAttacks}
-            min={1}
-          />
-          <NumberField
-            label="Crit range"
-            value={critRange}
-            onChange={setCritRange}
-            min={2}
-            max={20}
-          />
+          <label className="field">
+            <span>Build name</span>
+            <input value={name} onChange={(e) => setName(e.target.value)} />
+          </label>
         </div>
-        <div className="field-grid">
-          <CheckboxField label="Advantage" checked={advantage} onChange={setAdvantage} />
-          <CheckboxField label="Disadvantage" checked={disadvantage} onChange={setDisadvantage} />
-          <CheckboxField label="Power Attack" checked={powerAttack} onChange={setPowerAttack} />
-        </div>
-        {powerAttack && (
-          <div className="field-grid">
-            <NumberField
-              label="Power attack bonus damage"
-              value={powerAttackBonus}
-              onChange={setPowerAttackBonus}
-            />
-            <NumberField
-              label="Power attack hit penalty"
-              value={powerAttackPenalty}
-              onChange={setPowerAttackPenalty}
-            />
-          </div>
-        )}
+        <AttackListEditor attacks={attacks} onChange={setAttacks} />
         {createError && <p className="error">{createError}</p>}
         <button type="submit" disabled={creating}>
           {creating ? "Saving…" : "Save build"}

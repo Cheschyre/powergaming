@@ -5,72 +5,65 @@ the per-build calculate endpoint can share one implementation instead of
 duplicating the same loop.
 """
 
+from collections.abc import Sequence
+
 from app.calculator import crit_chance, had, hit_chance
-from app.schemas import ACResult
+from app.schemas import ACResult, AttackEntry, AttackResult
 
 
-def compute_ac_results(
-    attack_bonus: int,
-    ac_list: list[int],
-    num_dice: int,
-    die_sides: int,
-    modifier: int,
-    num_attacks: int,
-    advantage: bool,
-    disadvantage: bool,
-    crit_range: int,
-    power_attack: bool,
-    power_attack_bonus: int,
-    power_attack_penalty: int,
-) -> list[ACResult]:
+def attack_result(attack: AttackEntry, ac: int, use_power_attack: bool) -> AttackResult:
+    """One attack against one AC, with or without its power-attack trade."""
+    bonus = attack.power_attack_bonus if use_power_attack else 0
+    penalty = attack.power_attack_penalty if use_power_attack else 0
+    return AttackResult(
+        hit_chance=hit_chance(
+            attack.attack_bonus, ac, penalty, attack.advantage, attack.disadvantage
+        ),
+        crit_chance=crit_chance(
+            attack.attack_bonus,
+            ac,
+            penalty,
+            attack.advantage,
+            attack.disadvantage,
+            attack.crit_range,
+        ),
+        had=had(
+            attack.attack_bonus,
+            ac,
+            attack.num_dice,
+            attack.die_sides,
+            attack.modifier,
+            bonus,
+            penalty,
+            attack.advantage,
+            attack.disadvantage,
+            attack.crit_range,
+        ),
+    )
+
+
+def round_total(results: Sequence[AttackResult]) -> float:
+    """Expected damage for the round. A plain sum today (expectation is
+    additive across independent attacks); once-per-turn effects such as
+    Sneak Attack (roadmap step 11) will extend this, which is why clients
+    get the total from here instead of summing themselves."""
+    return sum(r.had for r in results)
+
+
+def compute_ac_results(attacks: Sequence[AttackEntry], ac_list: Sequence[int]) -> list[ACResult]:
+    any_power_attack = any(a.power_attack for a in attacks)
     results = []
     for ac in ac_list:
-        normal_had = had(
-            attack_bonus,
-            ac,
-            num_dice,
-            die_sides,
-            modifier,
-            0,
-            0,
-            advantage,
-            disadvantage,
-            crit_range,
-        )
-        normal_hit = hit_chance(attack_bonus, ac, 0, advantage, disadvantage)
-        normal_crit = crit_chance(attack_bonus, ac, 0, advantage, disadvantage, crit_range)
-
-        power_had_val = power_hit = power_crit = power_total = None
-        if power_attack:
-            power_had_val = had(
-                attack_bonus,
-                ac,
-                num_dice,
-                die_sides,
-                modifier,
-                power_attack_bonus,
-                power_attack_penalty,
-                advantage,
-                disadvantage,
-                crit_range,
-            )
-            power_hit = hit_chance(attack_bonus, ac, power_attack_penalty, advantage, disadvantage)
-            power_crit = crit_chance(
-                attack_bonus, ac, power_attack_penalty, advantage, disadvantage, crit_range
-            )
-            power_total = power_had_val * num_attacks
-
+        per_attack = [attack_result(a, ac, a.power_attack) for a in attacks]
+        without_pa = None
+        if any_power_attack:
+            without_pa = round_total([attack_result(a, ac, False) for a in attacks])
         results.append(
             ACResult(
                 ac=ac,
-                hit_chance=normal_hit,
-                crit_chance=normal_crit,
-                had=normal_had,
-                total_had_per_round=normal_had * num_attacks,
-                power_hit_chance=power_hit,
-                power_crit_chance=power_crit,
-                power_had=power_had_val,
-                power_total_had_per_round=power_total,
+                attacks=per_attack,
+                total_had=round_total(per_attack),
+                total_had_without_power_attack=without_pa,
             )
         )
     return results

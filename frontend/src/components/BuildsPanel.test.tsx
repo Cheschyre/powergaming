@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
-import { acResult, build } from "../test/fixtures";
+import { acResult, build, greatsword, handaxe } from "../test/fixtures";
 import BuildsPanel from "./BuildsPanel";
 
 vi.mock("../api");
@@ -21,20 +21,17 @@ describe("BuildsPanel", () => {
     expect(await screen.findByText("No builds saved yet.")).toBeInTheDocument();
   });
 
-  it("lists saved builds with a readable summary", async () => {
+  it("lists saved builds with their attacks grouped", async () => {
     vi.mocked(api.listBuilds).mockResolvedValue([
-      build(),
-      build({ id: 2, name: "Archer", num_attacks: 1, power_attack: false }),
+      build({ attacks: [{ ...greatsword, power_attack: true }, { ...greatsword, power_attack: true }, handaxe] }),
+      build({ id: 2, name: "Archer", attacks: [{ ...handaxe, name: "Longbow", advantage: true }] }),
     ]);
     render(<BuildsPanel />);
 
     await screen.findByText("Greatsword fighter");
-    expect(within(card("Greatsword fighter")).getByText(/\+7 attack, 2d6\+4/)).toHaveTextContent(
-      "+7 attack, 2d6+4 damage, 2 attacks/round – power attack: +10 dmg / -5 to hit",
-    );
-    expect(within(card("Archer")).getByText(/attack\/round$/)).toHaveTextContent(
-      "1 attack/round",
-    );
+    const fighterLines = within(card("Greatsword fighter")).getAllByRole("listitem").map((li) => li.textContent);
+    expect(fighterLines).toEqual(["Greatsword (PA) ×2: +8, 2d6+5, PA +10/−5", "Handaxe: +8, 1d6"]);
+    expect(within(card("Archer")).getByRole("listitem")).toHaveTextContent("Longbow: +8, 1d6, adv");
   });
 
   it("shows a load error", async () => {
@@ -44,22 +41,24 @@ describe("BuildsPanel", () => {
     expect(screen.queryByText("No builds saved yet.")).not.toBeInTheDocument();
   });
 
-  it("saves a new build, resets the name and refreshes the list", async () => {
+  it("saves a new build with all its attacks, resets the form and refreshes", async () => {
     const user = userEvent.setup();
     vi.mocked(api.createBuild).mockResolvedValue(build({ id: 9, name: "Rogue" }));
     render(<BuildsPanel />);
     await screen.findByText("No builds saved yet.");
 
-    await user.clear(screen.getByLabelText("Name"));
-    await user.type(screen.getByLabelText("Name"), "Rogue");
+    await user.clear(screen.getByLabelText("Build name"));
+    await user.type(screen.getByLabelText("Build name"), "Rogue");
+    await user.click(screen.getByRole("button", { name: "Duplicate" }));
     vi.mocked(api.listBuilds).mockResolvedValue([build({ id: 9, name: "Rogue" })]);
     await user.click(screen.getByRole("button", { name: "Save build" }));
 
-    expect(api.createBuild).toHaveBeenCalledWith(
-      expect.objectContaining({ name: "Rogue", attack_bonus: 5, num_attacks: 1 }),
-    );
+    const saved = vi.mocked(api.createBuild).mock.calls[0][0];
+    expect(saved.name).toBe("Rogue");
+    expect(saved.attacks).toHaveLength(2);
     expect(await screen.findByText("Rogue")).toBeInTheDocument();
-    expect(screen.getByLabelText("Name")).toHaveValue("New Build");
+    expect(screen.getByLabelText("Build name")).toHaveValue("New Build");
+    expect(screen.getAllByRole("group", { name: /^Attack \d+$/ })).toHaveLength(1);
   });
 
   it("shows a save error and keeps the form", async () => {
@@ -94,18 +93,20 @@ describe("BuildsPanel", () => {
       build({ id: 1, name: "Fighter" }),
       build({ id: 2, name: "Archer" }),
     ]);
-    vi.mocked(api.calculateForBuild).mockResolvedValue({ results: [acResult({ ac: 17 })] });
+    vi.mocked(api.calculateForBuild).mockResolvedValue({ results: [acResult({ ac: 17 }, 2)] });
     render(<BuildsPanel />);
     await screen.findByText("Fighter");
 
     const archer = card("Archer");
-    const acInput = within(archer).getByPlaceholderText("Target AC(s), comma-separated");
+    const acInput = within(archer).getByLabelText("Target ACs for Archer");
     await user.clear(acInput);
     await user.type(acInput, "17, 19");
     await user.click(within(archer).getByRole("button", { name: "Run" }));
 
     expect(api.calculateForBuild).toHaveBeenCalledWith(2, [17, 19]);
-    expect(await within(archer).findByRole("table")).toBeInTheDocument();
+    const table = await within(archer).findByRole("table");
+    // Labelled with the build's own attacks.
+    expect(within(table).getByText("Greatsword ×2")).toBeInTheDocument();
     expect(within(card("Fighter")).queryByRole("table")).not.toBeInTheDocument();
   });
 

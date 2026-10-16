@@ -178,26 +178,35 @@ Ruff is configured in `backend/pyproject.toml`, ESLint in
 
 ### `POST /api/calculate`
 
-Computes hit chance, crit chance, and HAD for one attack profile across a
-list of target ACs. Set `power_attack: true` to also get the power-attack
-(GWM/Sharpshooter-style) numbers for comparison at each AC.
+Computes hit chance, crit chance and HAD for a **round of attacks** across
+a list of target ACs. A round is a list of attack entries -- repeat an
+entry for Extra Attack. Each entry has its own power-attack
+(GWM/Sharpshooter) toggle, so you can power-attack with one swing and not
+another:
 
 ```json
 {
-  "attack_bonus": 8,
   "ac_list": [12, 15, 18],
-  "num_dice": 1,
-  "die_sides": 12,
-  "modifier": 3,
-  "num_attacks": 2,
-  "advantage": false,
-  "disadvantage": false,
-  "crit_range": 20,
-  "power_attack": true,
-  "power_attack_bonus": 10,
-  "power_attack_penalty": -5
+  "attacks": [
+    {"name": "Greatsword", "attack_bonus": 8, "num_dice": 2, "die_sides": 6, "modifier": 5,
+     "power_attack": true, "power_attack_bonus": 10, "power_attack_penalty": -5},
+    {"name": "Greatsword", "attack_bonus": 8, "num_dice": 2, "die_sides": 6, "modifier": 5},
+    {"name": "Handaxe", "attack_bonus": 8, "num_dice": 1, "die_sides": 6}
+  ]
 }
 ```
+
+Optional per-entry fields and defaults: `name` ("Attack"), `modifier` (0),
+`crit_range` (20), `advantage` / `disadvantage` (false), `power_attack`
+(false), `power_attack_bonus` / `power_attack_penalty` (0). 1-20 entries
+per round.
+
+Each result row has `attacks` (per-attack `hit_chance`, `crit_chance`,
+`had`, in request order), the round's `total_had`, and
+`total_had_without_power_attack` -- the same round with every power attack
+switched off, for comparison (`null` if no entry uses power attack). Use
+the API's `total_had` rather than summing entries: once-per-turn effects
+(Sneak Attack, roadmap step 11) make it more than a plain sum.
 
 ### `POST /api/breakeven`
 
@@ -222,8 +231,9 @@ Basic liveness check.
 
 ### `POST /api/builds`
 
-Save an attack profile. Body is the same shape as `/api/calculate` minus
-`ac_list`, plus a `name`. Returns the saved build including its `id`.
+Save a round of attacks: `{"name": "...", "attacks": [...]}`, with
+`attacks` in the same shape as `/api/calculate`. Returns the saved build
+including its `id`.
 
 ### `GET /api/builds`
 
@@ -235,7 +245,8 @@ Fetch one saved build. `404` if it doesn't exist.
 
 ### `PATCH /api/builds/{id}`
 
-Partially update a saved build -- send only the fields you want to change.
+Partially update a saved build -- send only `name` and/or `attacks`;
+`attacks` replaces the whole list.
 
 ### `DELETE /api/builds/{id}`
 
@@ -243,8 +254,8 @@ Delete a saved build. Returns `204 No Content`.
 
 ### `POST /api/builds/{id}/calculate`
 
-Run a saved build's stored attack profile against a list of ACs, without
-re-sending the whole profile:
+Run a saved build's stored attacks against a list of ACs, without
+re-sending them:
 
 ```json
 { "ac_list": [12, 15, 18] }
@@ -297,18 +308,18 @@ Response shape is identical to `/api/calculate`.
    - Frontend test suite: Vitest + React Testing Library, run in CI.
    - Also: the frontend builds on Node 24 (Node 20 is end-of-life), and
      GitHub Actions are on their Node 24 versions.
-9. Multiple distinct attacks per round -- today `num_attacks` just
-   repeats one attack profile; real rounds mix attacks (e.g. greatsword
-   x2 + a bonus-action handaxe), each with its own bonus and damage.
-   - `CalculateRequest`/`BuildBase` become a list of attack entries
-     instead of one profile + a count, each with its own
-     `attack_bonus`, damage dice, and its own power-attack
-     (GWM/Sharpshooter) toggle -- per-attack, not round-global, so you
-     can power-attack with the greatsword but not the off-hand hit.
-   - Migration for existing saved builds -- each becomes a single-entry
-     attack list so current data carries over unchanged.
-   - UI: `CalculatorPanel`/`BuildsPanel` get a repeatable attack row in
-     place of the single form.
+9. ~~Multiple distinct attacks per round~~ -- done. A round is now a
+   list of attack entries (repeat one for Extra Attack), each with its
+   own bonus, damage, crit range, advantage and power-attack toggle.
+   - `CalculateRequest`/builds take `attacks: [...]`; results return
+     per-attack numbers plus a server-computed round total and the
+     round's total without power attack.
+   - Migration `0002` turned every saved build into `num_attacks`
+     identical entries -- same numbers as before (verified against the
+     old API on real data).
+   - UI: repeatable attack rows with Duplicate/Remove; the results table
+     stays compact when all attacks match and groups identical attacks
+     ("Greatsword (PA) ×2 | Handaxe") when they differ.
 10. Level/progression view -- add `character_level` (1-20) and
     auto-derive proficiency bonus from it (+2 through +6 at the
     standard breakpoints), shown across a level range alongside
