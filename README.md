@@ -10,7 +10,8 @@ field, and there's now a browser UI on top of the API.
 
 The original CLI script is now a full app with a versioned
 frontend/backend, a test environment, and a production environment on
-the home lab (steps 1-8 of the roadmap below are done; step 9 is next).
+the home lab (steps 1-10 of the roadmap below are done; step 11 is
+next).
 
 ## Structure
 
@@ -320,36 +321,58 @@ Response shape is identical to `/api/calculate`.
    - UI: repeatable attack rows with Duplicate/Remove; the results table
      stays compact when all attacks match and groups identical attacks
      ("Greatsword (PA) ×2 | Handaxe") when they differ.
-10. Level/progression view, in three parts:
-    - ~~Edit saved builds in the UI~~ -- done. Each saved build has an
-      Edit button that opens the same name + attack-row form, prefilled;
-      also how builds converted by migration `0002` get real weapon
-      names instead of "Attack".
-    - Add `character_level` (1-20) to builds and auto-derive proficiency
-      bonus from it (+2 through +6 at the standard breakpoints).
-    - Show hit/crit/HAD and the power-attack breakeven across a level
-      range. `attack_bonus` stays
-    the one field it is today (not split into stat mod / proficiency /
-    item bonus) -- revisit that split if/when lite saved-character
-    sheets happen, where it'd actually pay for itself instead of just
-    reassembling into the same number.
-11. Sneak Attack (once-per-turn bonus damage) -- depends on step 9,
-    since "once per turn" only means something once attacks are
-    tracked individually. Applies to whichever attack the user
-    designates, not auto-assigned to the first one that would land.
-12. Other feats:
-    - Crossbow Expert (bonus-action off-hand shot without the usual
-      penalty) -- mostly falls out of step 9's multi-attack model once
-      that exists.
-    - Elven Accuracy (reroll one of two advantage dice) -- needs a new
-      "super-advantage" roll-distribution function alongside the
-      existing advantage/disadvantage one.
-    - Piercer (reroll 1s on damage dice) -- a damage-average formula
-      tweak. Slasher/Crusher are mostly non-damage secondary effects
-      and may not be worth modeling numerically.
+10. ~~Edit saved builds~~ -- done (v0.3.1). Each saved build has an Edit
+    button that opens the same name + attack-row form, prefilled -- also
+    how builds converted by migration `0002` get real weapon names
+    instead of "Attack". (Character level, proficiency and the level
+    view moved to step 13: they belong to a character, not to the
+    generic calculator.)
+11. Once-per-turn extra damage (Sneak Attack and similar) -- depends on
+    step 9, since "once per turn" only means something once attacks are
+    tracked individually. Modeled generically in the engine (extra dice
+    added once, if at least one designated attack hits), so step 13 can
+    map Sneak Attack, Divine Smite-style riders, etc. onto it. Applies to
+    whichever attacks the user designates, not auto-assigned to the first
+    one that would land. The round total is already computed server-side
+    for exactly this reason.
+12. More attack options in the engine, also named for what they do
+    rather than which feat grants them:
+    - Elven Accuracy -- "super-advantage" (roll three d20s, keep the
+      best): a new roll-distribution function alongside the existing
+      advantage/disadvantage one.
+    - Piercer -- reroll 1s on damage dice: a damage-average formula
+      tweak. Slasher/Crusher are mostly non-damage secondary effects and
+      may not be worth modeling numerically.
+    - Crossbow Expert needs nothing new: the bonus-action shot is just
+      another attack entry since step 9.
+13. Mini character sheet -- enter a character instead of final numbers:
+    ability scores, character level (proficiency derived: +2 at 1-4 up to
+    +6 at 17-20), weapons, +N magic items, fighting styles, Extra Attack,
+    and a manual "other bonus" for anything not modeled yet. The sheet
+    *derives* the attack entries (bonus, dice, modifier) and runs them
+    through the same engine, so it never does probability math itself and
+    every engine feature (steps 11-12) works for it automatically.
+    - Level/progression view lives here: rebuild the character's attacks
+      at each level (proficiency, ability score increases, Extra Attack
+      at 5) and show hit/crit/HAD and the power-attack breakeven across
+      the range.
+    - Characters get their own table; saved builds stay as the manual,
+      generic option (a character could be saved as a build snapshot to
+      compare).
+    - Rules data: SRD 5.1/5.2 content (e.g. the weapons table) is under
+      Creative Commons and can ship with attribution; anything outside
+      the SRD is user-entered. Needs an edition choice (2014 vs 2024 --
+      e.g. 2024 Great Weapon Master adds proficiency with no -5, and
+      Sharpshooter lost its -5/+10); the generic calculator already
+      handles both via free bonus/penalty numbers.
+    - Start small: the list above, single-class, then grow.
+
+The calculator itself stays generic -- final numbers in, probabilities
+out -- so it remains useful for quick what-ifs, monsters, NPCs and
+homebrew that no character sheet models.
 
 Spell-save damage (Fireball, Chromatic Orb, etc.) is intentionally not
-on this list yet -- the app is attack-roll-only today, and steps 9-12
+on this list yet -- the app is attack-roll-only today, and steps 11-12
 round that out fully before any save-based mechanics get added.
 
 ## Notes for later steps
