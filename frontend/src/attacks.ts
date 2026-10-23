@@ -1,9 +1,9 @@
 /**
- * Helpers for a round's list of attacks: sensible defaults for new rows,
- * grouping identical attacks for display ("Greatsword ×2"), and short
- * human-readable descriptions.
+ * Helpers for a round's list of attacks (and its optional once-per-turn
+ * damage): sensible defaults for new rows, grouping identical attacks for
+ * display ("Greatsword ×2"), and short human-readable descriptions.
  */
-import type { AttackEntry } from "./types";
+import type { AttackEntry, OncePerTurn } from "./types";
 
 export const MAX_ATTACKS = 20; // matches MAX_ATTACKS_PER_ROUND in backend/app/schemas.py
 
@@ -22,14 +22,38 @@ export function newAttack(overrides: Partial<AttackEntry> = {}): AttackEntry {
     // attack's power attack is switched on.
     power_attack_bonus: 10,
     power_attack_penalty: -5,
+    once_per_turn_eligible: false,
     ...overrides,
   };
 }
 
+/** Everything that makes up a round: what /api/calculate and builds take. */
+export interface Round {
+  attacks: AttackEntry[];
+  once_per_turn: OncePerTurn | null;
+}
+
+export function newOncePerTurn(overrides: Partial<OncePerTurn> = {}): OncePerTurn {
+  return { name: "Sneak Attack", num_dice: 1, die_sides: 6, modifier: 0, ...overrides };
+}
+
+/**
+ * Why this round can't be calculated as-is, or null. Mirrors the API's
+ * check so the form can say it plainly instead of showing a 422.
+ */
+export function roundProblem(round: Round): string | null {
+  if (round.once_per_turn && !round.attacks.some((a) => a.once_per_turn_eligible)) {
+    return `Mark at least one attack as eligible for ${round.once_per_turn.name}.`;
+  }
+  return null;
+}
+
 /**
  * Identity for grouping: two attacks are "the same" if every setting that
- * affects the math (and the name) matches. Power-attack numbers only count
- * while power attack is on, so a hidden leftover value never splits a group.
+ * affects the attack's own numbers (and the name) matches. Power-attack
+ * numbers only count while power attack is on, so a hidden leftover value
+ * never splits a group. Once-per-turn eligibility doesn't count either: the
+ * rider is shown as its own column, not per attack.
  */
 export function attackKey(a: AttackEntry): string {
   return JSON.stringify([
@@ -82,6 +106,16 @@ export function describeAttack(a: AttackEntry): string {
     parts.push(`PA ${signed(a.power_attack_bonus)}/${signed(a.power_attack_penalty).replace("-", "−")}`);
   }
   return parts.join(", ");
+}
+
+/** e.g. "3d6" or "2d8+2" */
+export function describeOncePerTurn(o: OncePerTurn): string {
+  return `${o.num_dice}d${o.die_sides}${o.modifier ? signed(o.modifier) : ""}`;
+}
+
+/** Distinct names of the attacks that can carry the once-per-turn damage. */
+export function eligibleAttackNames(attacks: AttackEntry[]): string[] {
+  return [...new Set(attacks.filter((a) => a.once_per_turn_eligible).map((a) => a.name))];
 }
 
 /** Column/summary label for a group, e.g. "Greatsword (PA) ×2". */

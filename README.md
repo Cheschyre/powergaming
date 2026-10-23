@@ -4,13 +4,14 @@
 
 D&D 5e attack/damage probability calculator — hit chance, crit chance, and
 hit-adjusted damage (HAD), with advantage/disadvantage, expanded crit
-ranges, and a GWM/Sharpshooter-style power attack breakeven finder. Builds
+ranges, once-per-turn extra damage (Sneak Attack and similar), and a
+GWM/Sharpshooter-style power attack breakeven finder. Builds
 can be saved and re-run against new target ACs without re-entering every
 field, and there's now a browser UI on top of the API.
 
 The original CLI script is now a full app with a versioned
 frontend/backend, a test environment, and a production environment on
-the home lab (steps 1-10 of the roadmap below are done; step 11 is
+the home lab (steps 1-11 of the roadmap below are done; step 12 is
 next).
 
 ## Structure
@@ -199,15 +200,26 @@ another:
 
 Optional per-entry fields and defaults: `name` ("Attack"), `modifier` (0),
 `crit_range` (20), `advantage` / `disadvantage` (false), `power_attack`
-(false), `power_attack_bonus` / `power_attack_penalty` (0). 1-20 entries
-per round.
+(false), `power_attack_bonus` / `power_attack_penalty` (0),
+`once_per_turn_eligible` (false). 1-20 entries per round.
+
+Optional **once-per-turn damage** (Sneak Attack, smite-style riders):
+
+```json
+"once_per_turn": {"name": "Sneak Attack", "num_dice": 3, "die_sides": 6, "modifier": 0}
+```
+
+It's added once, to the first attack marked `once_per_turn_eligible` that
+hits, in list order; if that hit is a crit its dice are doubled (the flat
+`modifier` isn't). At least one entry must be eligible (`422` otherwise).
 
 Each result row has `attacks` (per-attack `hit_chance`, `crit_chance`,
-`had`, in request order), the round's `total_had`, and
+`had`, in request order), `once_per_turn` (`chance` it lands and its
+expected damage `had`, or `null`), the round's `total_had`, and
 `total_had_without_power_attack` -- the same round with every power attack
-switched off, for comparison (`null` if no entry uses power attack). Use
-the API's `total_had` rather than summing entries: once-per-turn effects
-(Sneak Attack, roadmap step 11) make it more than a plain sum.
+switched off, once-per-turn damage recomputed to match, for comparison
+(`null` if no entry uses power attack). Use the API's `total_had` rather
+than summing entries: once-per-turn damage makes it more than a plain sum.
 
 ### `POST /api/breakeven`
 
@@ -232,8 +244,9 @@ Basic liveness check.
 
 ### `POST /api/builds`
 
-Save a round of attacks: `{"name": "...", "attacks": [...]}`, with
-`attacks` in the same shape as `/api/calculate`. Returns the saved build
+Save a round of attacks: `{"name": "...", "attacks": [...],
+"once_per_turn": {...}}`, with `attacks` and the optional `once_per_turn`
+in the same shape as `/api/calculate`. Returns the saved build
 including its `id`.
 
 ### `GET /api/builds`
@@ -246,8 +259,11 @@ Fetch one saved build. `404` if it doesn't exist.
 
 ### `PATCH /api/builds/{id}`
 
-Partially update a saved build -- send only `name` and/or `attacks`;
-`attacks` replaces the whole list.
+Partially update a saved build -- send only what changes (`name`,
+`attacks`, `once_per_turn`); `attacks` replaces the whole list and
+`"once_per_turn": null` removes it. The resulting build is validated as a
+whole, e.g. new `attacks` with none eligible for the stored
+`once_per_turn` are a `422`.
 
 ### `DELETE /api/builds/{id}`
 
@@ -327,14 +343,26 @@ Response shape is identical to `/api/calculate`.
     instead of "Attack". (Character level, proficiency and the level
     view moved to step 13: they belong to a character, not to the
     generic calculator.)
-11. Once-per-turn extra damage (Sneak Attack and similar) -- depends on
-    step 9, since "once per turn" only means something once attacks are
-    tracked individually. Modeled generically in the engine (extra dice
-    added once, if at least one designated attack hits), so step 13 can
-    map Sneak Attack, Divine Smite-style riders, etc. onto it. Applies to
-    whichever attacks the user designates, not auto-assigned to the first
-    one that would land. The round total is already computed server-side
-    for exactly this reason.
+11. ~~Once-per-turn extra damage (Sneak Attack and similar)~~ -- done.
+    A round can carry one named rider (dice + flat bonus), and each attack
+    has an "eligible" checkbox for it.
+    - Engine: added to the first eligible attack that hits, in list
+      order; a crit on that hit doubles the rider's dice. Exact, not
+      simulated: the sum over eligible attacks of P(all earlier eligible
+      ones missed) x that attack's hit/crit-weighted rider damage
+      (checked in tests against all 400 d20 pairs).
+    - Results: the rider gets its own damage column (it isn't per
+      attack), plus a "chance it lands" column when 2+ attacks are
+      eligible (with one, that's just its Hit%). The round total includes
+      it, and the without-power-attack comparison recomputes it at the
+      higher hit chances.
+    - Saved builds store it (migration `0003`, a nullable column -- existing
+      builds are unchanged).
+    - Generic on purpose: step 13 can map Sneak Attack, Divine Smite-style
+      riders, Hunter's Mark-like once-per-turn bonuses etc. onto it.
+    - Also: nginx now sends `Cache-Control: no-cache` for `index.html`
+      (hashed `/assets/` are cached for good), so a new release shows up
+      without a hard refresh.
 12. More attack options in the engine, also named for what they do
     rather than which feat grants them:
     - Elven Accuracy -- "super-advantage" (roll three d20s, keep the

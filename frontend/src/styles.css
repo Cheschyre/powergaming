@@ -179,6 +179,19 @@ button.danger {
   margin: 0 0 0.75rem;
 }
 
+.once-per-turn {
+  border: 1px dashed #3a3d44;
+  border-radius: 6px;
+  padding: 0.6rem 1rem 0.25rem;
+  margin: 0 0 1rem;
+}
+
+.once-per-turn .hint {
+  margin: 0.25rem 0 0.6rem;
+  color: #9a9ca3;
+  font-size: 0.85rem;
+}
+
 .attack-row-header {
   display: flex;
   justify-content: space-between;

@@ -31,13 +31,41 @@ class AttackEntry(BaseModel):
     power_attack: bool = False
     power_attack_bonus: int = 0
     power_attack_penalty: int = 0
+    # Can this attack carry the round's once-per-turn damage (e.g. a finesse
+    # or ranged attack for Sneak Attack)? Ignored when the round has none.
+    once_per_turn_eligible: bool = False
+
+
+class OncePerTurn(BaseModel):
+    """Extra damage added once per turn, to the first eligible attack that
+    hits -- Sneak Attack, or any similar rider. Generic on purpose: the name
+    is just a label, and which attacks qualify is set per attack."""
+
+    name: str = Field("Extra damage", min_length=1, max_length=50)
+    num_dice: int = Field(..., ge=1, le=100)
+    die_sides: int = Field(..., ge=2, le=1000)
+    modifier: int = 0
+
+
+def _check_once_per_turn(attacks: list[AttackEntry], once_per_turn: OncePerTurn | None) -> None:
+    if once_per_turn is not None and not any(a.once_per_turn_eligible for a in attacks):
+        raise ValueError(
+            f"Mark at least one attack as eligible for {once_per_turn.name}, "
+            "or remove the once-per-turn damage."
+        )
 
 
 class CalculateRequest(BaseModel):
     ac_list: list[int] = Field(..., min_length=1, max_length=30)
     attacks: list[AttackEntry] = Field(..., min_length=1, max_length=MAX_ATTACKS_PER_ROUND)
+    once_per_turn: OncePerTurn | None = None
 
     _ac_in_range = field_validator("ac_list")(_check_ac_list)
+
+    @model_validator(mode="after")
+    def once_per_turn_has_an_eligible_attack(self) -> "CalculateRequest":
+        _check_once_per_turn(self.attacks, self.once_per_turn)
+        return self
 
 
 class AttackResult(BaseModel):
@@ -46,6 +74,15 @@ class AttackResult(BaseModel):
 
     hit_chance: float
     crit_chance: float
+    had: float
+
+
+class OncePerTurnResult(BaseModel):
+    """The round's once-per-turn damage against one AC."""
+
+    # Chance at least one eligible attack hits, i.e. the rider lands at all.
+    chance: float
+    # Expected rider damage for the round (crits double its dice).
     had: float
 
 
@@ -60,11 +97,13 @@ class ACResult(BaseModel):
 
     ac: int
     attacks: list[AttackResult]
-    # Expected damage for the whole round. Computed here rather than summed
-    # by clients: once-per-turn effects (Sneak Attack, roadmap step 11)
-    # make the round total more than a plain sum.
+    # Null when the round has no once-per-turn damage.
+    once_per_turn: OncePerTurnResult | None = None
+    # Expected damage for the whole round, once-per-turn damage included --
+    # which is why it's computed here rather than summed by clients.
     total_had: float
-    # The same round with every attack's power attack switched off -- for
+    # The same round with every attack's power attack switched off (the
+    # once-per-turn damage recomputed at the higher hit chances) -- for
     # comparing; null when no attack uses power attack.
     total_had_without_power_attack: float | None = None
 
@@ -112,6 +151,12 @@ class BreakevenResponse(BaseModel):
 class BuildBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     attacks: list[AttackEntry] = Field(..., min_length=1, max_length=MAX_ATTACKS_PER_ROUND)
+    once_per_turn: OncePerTurn | None = None
+
+    @model_validator(mode="after")
+    def once_per_turn_has_an_eligible_attack(self) -> "BuildBase":
+        _check_once_per_turn(self.attacks, self.once_per_turn)
+        return self
 
 
 class BuildCreate(BuildBase):
@@ -122,10 +167,12 @@ class BuildCreate(BuildBase):
 
 class BuildUpdate(BaseModel):
     """A partial update -- send only what changes. `attacks`, if sent,
-    replaces the whole list."""
+    replaces the whole list; `once_per_turn: null` removes it. The merged
+    build must still be valid (see BuildBase)."""
 
     name: str | None = Field(None, min_length=1, max_length=100)
     attacks: list[AttackEntry] | None = Field(None, min_length=1, max_length=MAX_ATTACKS_PER_ROUND)
+    once_per_turn: OncePerTurn | None = None
 
 
 class BuildRead(BuildBase):

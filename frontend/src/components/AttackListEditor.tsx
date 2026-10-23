@@ -6,6 +6,9 @@ import NumberField from "./NumberField";
 interface AttackListEditorProps {
   attacks: AttackEntry[];
   onChange: (attacks: AttackEntry[]) => void;
+  /** The round's once-per-turn damage, if any -- shows an "eligible"
+   * checkbox on each row. */
+  oncePerTurnName?: string;
 }
 
 /**
@@ -13,7 +16,11 @@ interface AttackListEditorProps {
  * each row has its own power-attack toggle, so you can power-attack with one
  * swing and not another.
  */
-export default function AttackListEditor({ attacks, onChange }: AttackListEditorProps) {
+export default function AttackListEditor({
+  attacks,
+  onChange,
+  oncePerTurnName,
+}: AttackListEditorProps) {
   const full = attacks.length >= MAX_ATTACKS;
 
   function update(index: number, changes: Partial<AttackEntry>) {
@@ -103,6 +110,13 @@ export default function AttackListEditor({ attacks, onChange }: AttackListEditor
               checked={attack.power_attack}
               onChange={(v) => update(i, { power_attack: v })}
             />
+            {oncePerTurnName && (
+              <CheckboxField
+                label={`Eligible for ${oncePerTurnName}`}
+                checked={attack.once_per_turn_eligible}
+                onChange={(v) => update(i, { once_per_turn_eligible: v })}
+              />
+            )}
           </div>
           {attack.power_attack && (
             <div className="field-grid">

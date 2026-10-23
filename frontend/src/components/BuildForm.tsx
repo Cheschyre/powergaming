@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
-import { newAttack } from "../attacks";
-import type { AttackEntry, BuildCreate } from "../types";
-import AttackListEditor from "./AttackListEditor";
+import { newAttack, roundProblem, type Round } from "../attacks";
+import type { BuildCreate } from "../types";
+import RoundEditor from "./RoundEditor";
 
 interface BuildFormProps {
   /** Starting values -- a saved build when editing, omitted for a new one. */
@@ -14,21 +14,30 @@ interface BuildFormProps {
   resetOnSuccess?: boolean;
 }
 
-const BLANK: BuildCreate = { name: "New Build", attacks: [newAttack()] };
+const BLANK_NAME = "New Build";
 
-/** Name + attack rows, shared by "Save a new build" and editing a saved one. */
+function blankRound(): Round {
+  return { attacks: [newAttack()], once_per_turn: null };
+}
+
+/** Name + round (attack rows, once-per-turn damage), shared by "Save a new build" and editing a saved one. */
 export default function BuildForm({
-  initial = BLANK,
+  initial,
   submitLabel,
   busyLabel,
   onSubmit,
   onCancel,
   resetOnSuccess = false,
 }: BuildFormProps) {
-  const [name, setName] = useState(initial.name);
+  const [name, setName] = useState(initial?.name ?? BLANK_NAME);
   // Copies, so editing never mutates the saved build shown elsewhere.
-  const [attacks, setAttacks] = useState<AttackEntry[]>(() =>
-    initial.attacks.map((a) => ({ ...a })),
+  const [round, setRound] = useState<Round>(() =>
+    initial
+      ? {
+          attacks: initial.attacks.map((a) => ({ ...a })),
+          once_per_turn: initial.once_per_turn ? { ...initial.once_per_turn } : null,
+        }
+      : blankRound(),
   );
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -38,10 +47,10 @@ export default function BuildForm({
     setError(null);
     setBusy(true);
     try {
-      await onSubmit({ name, attacks });
+      await onSubmit({ name, ...round });
       if (resetOnSuccess) {
-        setName(BLANK.name);
-        setAttacks([newAttack()]);
+        setName(BLANK_NAME);
+        setRound(blankRound());
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't save build.");
@@ -58,10 +67,10 @@ export default function BuildForm({
           <input value={name} maxLength={100} onChange={(e) => setName(e.target.value)} />
         </label>
       </div>
-      <AttackListEditor attacks={attacks} onChange={setAttacks} />
+      <RoundEditor round={round} onChange={setRound} />
       {error && <p className="error">{error}</p>}
       <div className="form-actions">
-        <button type="submit" disabled={busy}>
+        <button type="submit" disabled={busy || roundProblem(round) !== null}>
           {busy ? busyLabel : submitLabel}
         </button>
         {onCancel && (

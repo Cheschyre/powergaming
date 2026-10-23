@@ -96,6 +96,68 @@ def test_identical_attacks_match_the_old_num_attacks_formula():
         assert resp.json()["results"][0]["total_had"] == pytest.approx(old)
 
 
+RAPIER = {"name": "Rapier", "attack_bonus": 7, "num_dice": 1, "die_sides": 8, "modifier": 4}
+SNEAK_ATTACK = {"name": "Sneak Attack", "num_dice": 3, "die_sides": 6}
+
+
+def test_once_per_turn_damage_is_added_once():
+    # Two eligible +7 attacks vs AC 15 (65% hit, 5% crit), 3d6 Sneak Attack:
+    # 7.35 from the first, plus 0.35 * 7.35 when the first misses.
+    eligible = {**RAPIER, "once_per_turn_eligible": True}
+    resp = client.post(
+        "/api/calculate",
+        json={"ac_list": [15], "attacks": [eligible, eligible], "once_per_turn": SNEAK_ATTACK},
+    )
+    assert resp.status_code == 200
+    result = resp.json()["results"][0]
+    assert result["once_per_turn"]["chance"] == pytest.approx(1 - 0.35**2)
+    assert result["once_per_turn"]["had"] == pytest.approx(7.35 * 1.35)
+    attacks_only = sum(a["had"] for a in result["attacks"])
+    assert result["total_had"] == pytest.approx(attacks_only + 7.35 * 1.35)
+
+
+def test_once_per_turn_skips_ineligible_attacks():
+    # The ineligible greatsword first doesn't use up or carry the rider.
+    eligible = {**RAPIER, "once_per_turn_eligible": True}
+    resp = client.post(
+        "/api/calculate",
+        json={"ac_list": [15], "attacks": [GREATSWORD, eligible], "once_per_turn": SNEAK_ATTACK},
+    )
+    assert resp.json()["results"][0]["once_per_turn"]["had"] == pytest.approx(7.35)
+
+
+def test_once_per_turn_without_power_attack_uses_the_higher_hit_chance():
+    pa_eligible = {
+        **RAPIER,
+        "once_per_turn_eligible": True,
+        "power_attack": True,
+        "power_attack_bonus": 10,
+        "power_attack_penalty": -5,
+    }
+    result = client.post(
+        "/api/calculate",
+        json={"ac_list": [15], "attacks": [pa_eligible], "once_per_turn": SNEAK_ATTACK},
+    ).json()["results"][0]
+    # With PA: +2 needs a 13 (40% + 5% crit); without: the 7.35 above.
+    assert result["once_per_turn"]["had"] == pytest.approx(0.35 * 10.5 + 0.05 * 21)
+    no_pa_attack = had(7, 15, 1, 8, 4)
+    assert result["total_had_without_power_attack"] == pytest.approx(no_pa_attack + 7.35)
+
+
+def test_no_once_per_turn_returns_null():
+    resp = client.post("/api/calculate", json={"ac_list": [15], "attacks": [RAPIER]})
+    assert resp.json()["results"][0]["once_per_turn"] is None
+
+
+def test_once_per_turn_needs_an_eligible_attack():
+    resp = client.post(
+        "/api/calculate",
+        json={"ac_list": [15], "attacks": [RAPIER], "once_per_turn": SNEAK_ATTACK},
+    )
+    assert resp.status_code == 422
+    assert "eligible for Sneak Attack" in resp.text
+
+
 def test_calculate_rejects_bad_ac():
     resp = client.post("/api/calculate", json={"ac_list": [999], "attacks": [HANDAXE]})
     assert resp.status_code == 422  # FastAPI validation error

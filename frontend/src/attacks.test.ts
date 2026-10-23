@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { attackKey, describeAttack, groupAttacks, groupLabel, newAttack } from "./attacks";
+import {
+  attackKey,
+  describeAttack,
+  describeOncePerTurn,
+  eligibleAttackNames,
+  groupAttacks,
+  groupLabel,
+  newAttack,
+  newOncePerTurn,
+  roundProblem,
+} from "./attacks";
 
 const greatsword = newAttack({ name: "Greatsword", attack_bonus: 8, num_dice: 2, die_sides: 6, modifier: 5 });
 const handaxe = newAttack({ name: "Handaxe", attack_bonus: 8, num_dice: 1, die_sides: 6, modifier: 0 });
@@ -44,5 +54,33 @@ describe("labels", () => {
     const [two, one] = groupAttacks([{ ...greatsword, power_attack: true }, { ...greatsword, power_attack: true }, handaxe]);
     expect(groupLabel(two)).toBe("Greatsword (PA) ×2");
     expect(groupLabel(one)).toBe("Handaxe");
+  });
+});
+
+describe("once-per-turn damage", () => {
+  const sneak = newOncePerTurn({ num_dice: 3 });
+
+  it("needs at least one eligible attack", () => {
+    expect(roundProblem({ attacks: [greatsword], once_per_turn: null })).toBeNull();
+    expect(roundProblem({ attacks: [greatsword], once_per_turn: sneak })).toBe(
+      "Mark at least one attack as eligible for Sneak Attack.",
+    );
+    expect(
+      roundProblem({
+        attacks: [greatsword, { ...handaxe, once_per_turn_eligible: true }],
+        once_per_turn: sneak,
+      }),
+    ).toBeNull();
+  });
+
+  it("doesn't split groups by eligibility -- the rider has its own column", () => {
+    expect(attackKey({ ...greatsword, once_per_turn_eligible: true })).toBe(attackKey(greatsword));
+  });
+
+  it("describes the rider and lists eligible attacks once each", () => {
+    expect(describeOncePerTurn(sneak)).toBe("3d6");
+    expect(describeOncePerTurn(newOncePerTurn({ num_dice: 2, die_sides: 8, modifier: 2 }))).toBe("2d8+2");
+    const eligible = { ...handaxe, once_per_turn_eligible: true };
+    expect(eligibleAttackNames([greatsword, eligible, eligible])).toEqual(["Handaxe"]);
   });
 });

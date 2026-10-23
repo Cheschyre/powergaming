@@ -84,4 +84,41 @@ describe("CalculatorPanel", () => {
     resolve({ results: [] });
     expect(await screen.findByRole("button", { name: "Calculate" })).toBeEnabled();
   });
+
+  it("sends once-per-turn damage with the attacks that can carry it", async () => {
+    const user = userEvent.setup();
+    render(<CalculatorPanel />);
+
+    await user.click(screen.getByRole("button", { name: "+ Add attack" }));
+    await user.click(screen.getByLabelText(/Once-per-turn extra damage/));
+    // Turning it on starts every attack eligible; the user unticks one.
+    expect(within(row(1)).getByLabelText("Eligible for Sneak Attack")).toBeChecked();
+    await user.click(within(row(2)).getByLabelText("Eligible for Sneak Attack"));
+
+    const rider = screen.getByRole("group", { name: "Once-per-turn damage" });
+    await user.clear(within(rider).getByLabelText("Number of dice"));
+    await user.type(within(rider).getByLabelText("Number of dice"), "3");
+    await user.click(screen.getByRole("button", { name: "Calculate" }));
+
+    const req = vi.mocked(api.calculate).mock.calls[0][0];
+    expect(req.once_per_turn).toEqual({ name: "Sneak Attack", num_dice: 3, die_sides: 6, modifier: 0 });
+    expect(req.attacks.map((a) => a.once_per_turn_eligible)).toEqual([true, false]);
+  });
+
+  it("won't calculate once-per-turn damage with no eligible attack", async () => {
+    const user = userEvent.setup();
+    render(<CalculatorPanel />);
+
+    await user.click(screen.getByLabelText(/Once-per-turn extra damage/));
+    await user.click(within(row(1)).getByLabelText("Eligible for Sneak Attack"));
+
+    expect(screen.getByText("Mark at least one attack as eligible for Sneak Attack.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Calculate" })).toBeDisabled();
+
+    // Turning it off sends a plain round again.
+    await user.click(screen.getByLabelText(/Once-per-turn extra damage/));
+    expect(screen.queryByLabelText("Eligible for Sneak Attack")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Calculate" }));
+    expect(vi.mocked(api.calculate).mock.calls[0][0].once_per_turn).toBeNull();
+  });
 });

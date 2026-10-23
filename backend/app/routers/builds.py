@@ -1,6 +1,8 @@
 """Routes for saving, listing, editing and calculating from stored builds."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app import crud, schemas
@@ -33,6 +35,18 @@ def update_build(build_id: int, updates: schemas.BuildUpdate, db: Session = Depe
     db_build = crud.get_build(db, build_id)
     if db_build is None:
         raise HTTPException(status_code=404, detail="Build not found")
+
+    # Each field is valid on its own; check the build they add up to, e.g.
+    # new attacks that leave the stored once-per-turn damage with no
+    # eligible attack.
+    current = schemas.BuildBase.model_validate(db_build, from_attributes=True)
+    try:
+        schemas.BuildBase.model_validate(
+            {**current.model_dump(), **updates.model_dump(exclude_unset=True)}
+        )
+    except ValidationError as e:
+        raise RequestValidationError(e.errors(include_url=False)) from e
+
     return crud.update_build(db, db_build, updates)
 
 
@@ -48,11 +62,14 @@ def delete_build(build_id: int, db: Session = Depends(get_db)):
 def calculate_for_build(
     build_id: int, req: schemas.BuildCalculateRequest, db: Session = Depends(get_db)
 ):
-    """Run a saved build's stored attacks against a list of ACs -- same math
-    as /api/calculate, just pulling the attacks from the database."""
+    """Run a saved build's stored attacks (and once-per-turn damage) against
+    a list of ACs -- same math as /api/calculate, just pulling the round
+    from the database."""
     db_build = crud.get_build(db, build_id)
     if db_build is None:
         raise HTTPException(status_code=404, detail="Build not found")
 
     build = schemas.BuildRead.model_validate(db_build)
-    return schemas.CalculateResponse(results=compute_ac_results(build.attacks, req.ac_list))
+    return schemas.CalculateResponse(
+        results=compute_ac_results(build.attacks, req.ac_list, build.once_per_turn)
+    )

@@ -117,6 +117,32 @@ def had(
     return normal_p * normal_dmg + crit_p * crit_dmg
 
 
+def once_per_turn_damage(
+    chances: list[tuple[float, float]], num_dice: int, die_sides: int, modifier: int = 0
+) -> tuple[float, float]:
+    """
+    Once-per-turn extra damage (Sneak Attack, smite-style riders): added to
+    the first eligible attack that hits, never more than once a turn.
+
+    `chances` is (hit chance, crit chance) for each eligible attack, in the
+    order they're made. Attack i carries the rider only if every eligible
+    attack before it missed; if that hit is a crit, the rider's dice are
+    doubled too (its flat modifier isn't, as with weapon damage).
+
+    Returns (chance the rider lands at all, expected rider damage). Per-
+    attack hits are independent, so this is exact -- not an approximation.
+    """
+    normal_dmg = average_damage(num_dice, die_sides, modifier)
+    crit_dmg = average_damage(num_dice * 2, die_sides, modifier)
+
+    all_missed_so_far = 1.0
+    expected = 0.0
+    for hit_p, crit_p in chances:
+        expected += all_missed_so_far * ((hit_p - crit_p) * normal_dmg + crit_p * crit_dmg)
+        all_missed_so_far *= 1 - hit_p
+    return 1 - all_missed_so_far, expected
+
+
 def find_power_attack_breakeven(
     attack_bonus: int,
     num_dice: int,

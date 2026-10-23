@@ -1,20 +1,20 @@
 import { useState, type FormEvent } from "react";
 import { calculate } from "../api";
-import { newAttack, parseAcList } from "../attacks";
-import type { ACResult, AttackEntry } from "../types";
-import AttackListEditor from "./AttackListEditor";
+import { newAttack, parseAcList, roundProblem, type Round } from "../attacks";
+import type { ACResult } from "../types";
 import ResultsTable from "./ResultsTable";
+import RoundEditor from "./RoundEditor";
 
 interface CalculatedRound {
   results: ACResult[];
-  /** The attacks the results were calculated for -- edits made afterwards
+  /** The round the results were calculated for -- edits made afterwards
    * don't relabel a table that no longer matches them. */
-  attacks: AttackEntry[];
+  round: Round;
 }
 
 export default function CalculatorPanel() {
   const [acListText, setAcListText] = useState("12, 15, 18");
-  const [attacks, setAttacks] = useState<AttackEntry[]>([newAttack()]);
+  const [round, setRound] = useState<Round>({ attacks: [newAttack()], once_per_turn: null });
 
   const [calculated, setCalculated] = useState<CalculatedRound | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -24,10 +24,13 @@ export default function CalculatorPanel() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const snapshot = attacks.map((a) => ({ ...a }));
+    const snapshot: Round = {
+      attacks: round.attacks.map((a) => ({ ...a })),
+      once_per_turn: round.once_per_turn && { ...round.once_per_turn },
+    };
     try {
-      const response = await calculate({ ac_list: parseAcList(acListText), attacks: snapshot });
-      setCalculated({ results: response.results, attacks: snapshot });
+      const response = await calculate({ ac_list: parseAcList(acListText), ...snapshot });
+      setCalculated({ results: response.results, round: snapshot });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
       setCalculated(null);
@@ -46,15 +49,21 @@ export default function CalculatorPanel() {
           </label>
         </div>
 
-        <AttackListEditor attacks={attacks} onChange={setAttacks} />
+        <RoundEditor round={round} onChange={setRound} />
 
-        <button type="submit" disabled={loading}>
+        <button type="submit" disabled={loading || roundProblem(round) !== null}>
           {loading ? "Calculating…" : "Calculate"}
         </button>
       </form>
 
       {error && <p className="error">{error}</p>}
-      {calculated && <ResultsTable results={calculated.results} attacks={calculated.attacks} />}
+      {calculated && (
+        <ResultsTable
+          results={calculated.results}
+          attacks={calculated.round.attacks}
+          oncePerTurn={calculated.round.once_per_turn}
+        />
+      )}
     </section>
   );
 }
