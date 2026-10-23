@@ -12,6 +12,7 @@ from app.calculator import (
     find_power_attack_breakeven,
     had,
     hit_chance,
+    once_per_turn_damage,
 )
 
 
@@ -96,3 +97,66 @@ def test_breakeven_returns_full_ac_range_and_some_crossover():
     # Power attack (-5/+10) should be better at low AC and worse at high AC
     # for this profile, so we expect at least one crossover.
     assert len(crossovers) >= 1
+
+
+def test_once_per_turn_single_attack_hand_calculation():
+    # 65% hit, 5% crit; 3d6 averages 10.5, doubled on a crit to 21:
+    # 0.60 * 10.5 + 0.05 * 21 = 7.35.
+    chance, expected = once_per_turn_damage([(0.65, 0.05)], 3, 6)
+    assert chance == pytest.approx(0.65)
+    assert expected == pytest.approx(7.35)
+
+
+def test_once_per_turn_second_attack_only_counts_if_the_first_missed():
+    chance, expected = once_per_turn_damage([(0.65, 0.05), (0.65, 0.05)], 3, 6)
+    assert chance == pytest.approx(1 - 0.35**2)
+    assert expected == pytest.approx(7.35 + 0.35 * 7.35)
+
+
+def test_once_per_turn_modifier_is_not_doubled_on_a_crit():
+    # Always hits, always crits: 2d4 (avg 5) + 2 flat.
+    _, expected = once_per_turn_damage([(1.0, 1.0)], 1, 4, 2)
+    assert expected == pytest.approx(7)
+
+
+def test_once_per_turn_with_no_eligible_attacks_is_zero():
+    assert once_per_turn_damage([], 3, 6) == (0.0, 0.0)
+
+
+def test_once_per_turn_matches_brute_force_over_every_d20_pair():
+    """Enumerate every pair of d20 rolls for two different attacks and apply
+    the rule literally: the rider goes on the first hit, dice doubled if
+    that hit crits."""
+    attacks = [  # (attack bonus, crit range) vs AC 16
+        (5, 19),
+        (9, 20),
+    ]
+    ac = 16
+    normal, crit = 7.0, 14.0  # 2d6 rider
+
+    def outcome(face, bonus, crit_range):
+        if face == 1:
+            return "miss"
+        hits = face == 20 or face + bonus >= ac
+        if not hits:
+            return "miss"
+        return "crit" if face >= crit_range else "hit"
+
+    hits = 0
+    total = 0.0
+    for f1 in range(1, 21):
+        for f2 in range(1, 21):
+            for face, (bonus, crit_range) in zip((f1, f2), attacks, strict=True):
+                result = outcome(face, bonus, crit_range)
+                if result != "miss":
+                    total += crit if result == "crit" else normal
+                    hits += 1
+                    break
+
+    chances = [
+        (hit_chance(bonus, ac), crit_chance(bonus, ac, crit_range=crit_range))
+        for bonus, crit_range in attacks
+    ]
+    chance, expected = once_per_turn_damage(chances, 2, 6)
+    assert chance == pytest.approx(hits / 400)
+    assert expected == pytest.approx(total / 400)

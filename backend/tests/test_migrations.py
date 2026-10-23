@@ -113,7 +113,9 @@ def test_0002_turns_num_attacks_into_identical_entries(db_url):
             "power_attack": True,
             "power_attack_bonus": 10,
             "power_attack_penalty": -5,
+            "once_per_turn_eligible": False,
         }
+        assert builds["GWM Fighter"]["once_per_turn"] is None  # 0003: none yet
         assert len(rogue) == 1 and rogue[0]["advantage"] is True
 
         # The migrated build's round total equals the old formula (HAD x N).
@@ -140,3 +142,14 @@ def test_0002_downgrade_restores_the_old_columns(db_url):
     for row, old in zip(rows, OLD_BUILDS, strict=True):
         for key, value in old.items():
             assert row[key] == value, key
+
+
+def test_0003_downgrade_drops_once_per_turn(db_url):
+    _alembic("upgrade", "head")
+    _alembic("downgrade", "0002")
+
+    engine = sa.create_engine(db_url)
+    columns = {c["name"] for c in sa.inspect(engine).get_columns("builds")}
+    engine.dispose()
+    assert "once_per_turn" not in columns
+    assert "attacks" in columns

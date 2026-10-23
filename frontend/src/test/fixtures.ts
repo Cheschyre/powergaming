@@ -28,6 +28,7 @@ export function acResult(overrides: Partial<ACResult> = {}, n = 1): ACResult {
   return {
     ac: 15,
     attacks,
+    once_per_turn: null,
     total_had: attacks.reduce((sum, a) => sum + a.had, 0),
     total_had_without_power_attack: null,
     ...overrides,
@@ -39,6 +40,7 @@ export function build(overrides: Partial<Build> = {}): Build {
     id: 1,
     name: "Greatsword fighter",
     attacks: [greatsword, greatsword],
+    once_per_turn: null,
     created_at: "2026-10-01T00:00:00Z",
     updated_at: "2026-10-01T00:00:00Z",
     ...overrides,

@@ -20,6 +20,9 @@ class Build(Base):
     # child table: entries are always read/written as a whole list, and new
     # per-attack options (roadmap steps 10-12) need no schema migration.
     attacks = Column(JSON, nullable=False)
+    # Optional schemas.OncePerTurn dict (Sneak Attack and similar); which
+    # attacks it applies to is a flag on each attack entry.
+    once_per_turn = Column(JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(

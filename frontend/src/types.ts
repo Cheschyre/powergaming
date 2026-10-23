@@ -14,6 +14,8 @@ type Schemas = components["schemas"];
 
 export type AttackEntry = Schemas["AttackEntry"];
 export type AttackResult = Schemas["AttackResult"];
+export type OncePerTurn = Schemas["OncePerTurn"];
+export type OncePerTurnResult = Schemas["OncePerTurnResult"];
 export type CalculateRequest = Schemas["CalculateRequest"];
 export type ACResult = Schemas["ACResult"];
 export type CalculateResponse = Schemas["CalculateResponse"];

@@ -124,6 +124,34 @@ describe("BuildsPanel", () => {
     ).toBeInTheDocument();
   });
 
+  it("summarizes once-per-turn damage and passes it to the results", async () => {
+    const user = userEvent.setup();
+    const rapier = { ...handaxe, name: "Rapier", once_per_turn_eligible: true };
+    const sneak = { name: "Sneak Attack", num_dice: 3, die_sides: 6, modifier: 0 };
+    vi.mocked(api.listBuilds).mockResolvedValue([
+      build({ name: "Rogue", attacks: [rapier], once_per_turn: sneak }),
+    ]);
+    vi.mocked(api.calculateForBuild).mockResolvedValue({
+      results: [acResult({ once_per_turn: { chance: 0.65, had: 7.35 } })],
+    });
+    render(<BuildsPanel />);
+    await screen.findByText("Rogue");
+
+    expect(card("Rogue")).toHaveTextContent(
+      "Sneak Attack: 3d6 once per turn, on the first hit by Rapier",
+    );
+    await user.click(within(card("Rogue")).getByRole("button", { name: "Run" }));
+    expect(
+      await within(card("Rogue")).findByRole("columnheader", { name: "Sneak Attack damage" }),
+    ).toBeInTheDocument();
+
+    // The edit form starts from the saved rider.
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const editor = screen.getByRole("heading", { name: /^Editing/ }).parentElement!;
+    expect(within(editor).getByLabelText(/Once-per-turn extra damage/)).toBeChecked();
+    expect(within(editor).getByLabelText("Eligible for Sneak Attack")).toBeChecked();
+  });
+
   describe("editing", () => {
     it("opens the build in an editor, prefilled with its name and attacks", async () => {
       const user = userEvent.setup();
@@ -160,6 +188,7 @@ describe("BuildsPanel", () => {
       expect(api.updateBuild).toHaveBeenCalledWith(1, {
         name: "Champion",
         attacks: [greatsword, greatsword],
+        once_per_turn: null,
       });
       expect(await screen.findByText("Champion")).toBeInTheDocument();
       expect(screen.queryByRole("heading", { name: /^Editing/ })).not.toBeInTheDocument();

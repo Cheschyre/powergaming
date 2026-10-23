@@ -69,8 +69,9 @@ export interface paths {
         put?: never;
         /**
          * Calculate For Build
-         * @description Run a saved build's stored attacks against a list of ACs -- same math
-         *     as /api/calculate, just pulling the attacks from the database.
+         * @description Run a saved build's stored attacks (and once-per-turn damage) against
+         *     a list of ACs -- same math as /api/calculate, just pulling the round
+         *     from the database.
          */
         post: operations["calculate_for_build_api_builds__build_id__calculate_post"];
         delete?: never;
@@ -127,6 +128,7 @@ export interface components {
             ac: number;
             /** Attacks */
             attacks: components["schemas"]["AttackResult"][];
+            once_per_turn: components["schemas"]["OncePerTurnResult"] | null;
             /** Total Had */
             total_had: number;
             /** Total Had Without Power Attack */
@@ -171,6 +173,11 @@ export interface components {
             name: string;
             /** Num Dice */
             num_dice: number;
+            /**
+             * Once Per Turn Eligible
+             * @default false
+             */
+            once_per_turn_eligible: boolean;
             /**
              * Power Attack
              * @default false
@@ -276,6 +283,7 @@ export interface components {
             attacks: components["schemas"]["AttackEntry"][];
             /** Name */
             name: string;
+            once_per_turn?: components["schemas"]["OncePerTurn"] | null;
         };
         /** BuildRead */
         BuildRead: {
@@ -290,6 +298,7 @@ export interface components {
             id: number;
             /** Name */
             name: string;
+            once_per_turn: components["schemas"]["OncePerTurn"] | null;
             /**
              * Updated At
              * Format: date-time
@@ -299,13 +308,15 @@ export interface components {
         /**
          * BuildUpdate
          * @description A partial update -- send only what changes. `attacks`, if sent,
-         *     replaces the whole list.
+         *     replaces the whole list; `once_per_turn: null` removes it. The merged
+         *     build must still be valid (see BuildBase).
          */
         BuildUpdate: {
             /** Attacks */
             attacks?: components["schemas"]["AttackEntry"][] | null;
             /** Name */
             name?: string | null;
+            once_per_turn?: components["schemas"]["OncePerTurn"] | null;
         };
         /** CalculateRequest */
         CalculateRequest: {
@@ -313,6 +324,7 @@ export interface components {
             ac_list: number[];
             /** Attacks */
             attacks: components["schemas"]["AttackEntry"][];
+            once_per_turn?: components["schemas"]["OncePerTurn"] | null;
         };
         /** CalculateResponse */
         CalculateResponse: {
@@ -323,6 +335,38 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * OncePerTurn
+         * @description Extra damage added once per turn, to the first eligible attack that
+         *     hits -- Sneak Attack, or any similar rider. Generic on purpose: the name
+         *     is just a label, and which attacks qualify is set per attack.
+         */
+        OncePerTurn: {
+            /** Die Sides */
+            die_sides: number;
+            /**
+             * Modifier
+             * @default 0
+             */
+            modifier: number;
+            /**
+             * Name
+             * @default Extra damage
+             */
+            name: string;
+            /** Num Dice */
+            num_dice: number;
+        };
+        /**
+         * OncePerTurnResult
+         * @description The round's once-per-turn damage against one AC.
+         */
+        OncePerTurnResult: {
+            /** Chance */
+            chance: number;
+            /** Had */
+            had: number;
         };
         /** ValidationError */
         ValidationError: {

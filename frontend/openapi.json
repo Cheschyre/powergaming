@@ -15,6 +15,16 @@
             "title": "Attacks",
             "type": "array"
           },
+          "once_per_turn": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OncePerTurnResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "total_had": {
             "title": "Total Had",
             "type": "number"
@@ -34,6 +44,7 @@
         "required": [
           "ac",
           "attacks",
+          "once_per_turn",
           "total_had",
           "total_had_without_power_attack"
         ],
@@ -87,6 +98,11 @@
             "minimum": 1.0,
             "title": "Num Dice",
             "type": "integer"
+          },
+          "once_per_turn_eligible": {
+            "default": false,
+            "title": "Once Per Turn Eligible",
+            "type": "boolean"
           },
           "power_attack": {
             "default": false,
@@ -292,6 +308,16 @@
             "minLength": 1,
             "title": "Name",
             "type": "string"
+          },
+          "once_per_turn": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OncePerTurn"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -327,6 +353,16 @@
             "title": "Name",
             "type": "string"
           },
+          "once_per_turn": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OncePerTurn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -336,6 +372,7 @@
         "required": [
           "name",
           "attacks",
+          "once_per_turn",
           "id",
           "created_at",
           "updated_at"
@@ -344,7 +381,7 @@
         "type": "object"
       },
       "BuildUpdate": {
-        "description": "A partial update -- send only what changes. `attacks`, if sent,\nreplaces the whole list.",
+        "description": "A partial update -- send only what changes. `attacks`, if sent,\nreplaces the whole list; `once_per_turn: null` removes it. The merged\nbuild must still be valid (see BuildBase).",
         "properties": {
           "attacks": {
             "anyOf": [
@@ -374,6 +411,16 @@
               }
             ],
             "title": "Name"
+          },
+          "once_per_turn": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OncePerTurn"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "title": "BuildUpdate",
@@ -398,6 +445,16 @@
             "minItems": 1,
             "title": "Attacks",
             "type": "array"
+          },
+          "once_per_turn": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OncePerTurn"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -434,6 +491,60 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "OncePerTurn": {
+        "description": "Extra damage added once per turn, to the first eligible attack that\nhits -- Sneak Attack, or any similar rider. Generic on purpose: the name\nis just a label, and which attacks qualify is set per attack.",
+        "properties": {
+          "die_sides": {
+            "maximum": 1000.0,
+            "minimum": 2.0,
+            "title": "Die Sides",
+            "type": "integer"
+          },
+          "modifier": {
+            "default": 0,
+            "title": "Modifier",
+            "type": "integer"
+          },
+          "name": {
+            "default": "Extra damage",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "num_dice": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Num Dice",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "num_dice",
+          "die_sides"
+        ],
+        "title": "OncePerTurn",
+        "type": "object"
+      },
+      "OncePerTurnResult": {
+        "description": "The round's once-per-turn damage against one AC.",
+        "properties": {
+          "chance": {
+            "title": "Chance",
+            "type": "number"
+          },
+          "had": {
+            "title": "Had",
+            "type": "number"
+          }
+        },
+        "required": [
+          "chance",
+          "had"
+        ],
+        "title": "OncePerTurnResult",
         "type": "object"
       },
       "ValidationError": {
@@ -473,7 +584,7 @@
   },
   "info": {
     "title": "Power Gaming Calculator API",
-    "version": "0.3.0"
+    "version": "0.4.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -706,7 +817,7 @@
     },
     "/api/builds/{build_id}/calculate": {
       "post": {
-        "description": "Run a saved build's stored attacks against a list of ACs -- same math\nas /api/calculate, just pulling the attacks from the database.",
+        "description": "Run a saved build's stored attacks (and once-per-turn damage) against\na list of ACs -- same math as /api/calculate, just pulling the round\nfrom the database.",
         "operationId": "calculate_for_build_api_builds__build_id__calculate_post",
         "parameters": [
           {

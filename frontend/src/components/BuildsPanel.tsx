@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { calculateForBuild, createBuild, deleteBuild, listBuilds, updateBuild } from "../api";
-import { describeAttack, groupAttacks, groupLabel, parseAcList } from "../attacks";
+import {
+  describeAttack,
+  describeOncePerTurn,
+  eligibleAttackNames,
+  groupAttacks,
+  groupLabel,
+  parseAcList,
+} from "../attacks";
 import type { ACResult, Build, BuildCreate } from "../types";
 import BuildForm from "./BuildForm";
 import ResultsTable from "./ResultsTable";
@@ -80,7 +87,11 @@ export default function BuildsPanel() {
           <div className="build-card editing" key={build.id}>
             <h3>Editing {build.name}</h3>
             <BuildForm
-              initial={{ name: build.name, attacks: build.attacks }}
+              initial={{
+                name: build.name,
+                attacks: build.attacks,
+                once_per_turn: build.once_per_turn,
+              }}
               submitLabel="Save changes"
               busyLabel="Saving…"
               onSubmit={(changes) => handleSaveEdit(build.id, changes)}
@@ -104,6 +115,13 @@ export default function BuildsPanel() {
                 <span className="attack-name">{groupLabel(g)}</span>: {describeAttack(g.attack)}
               </li>
             ))}
+            {build.once_per_turn && (
+              <li>
+                <span className="attack-name">{build.once_per_turn.name}</span>:{" "}
+                {describeOncePerTurn(build.once_per_turn)} once per turn, on the first hit by{" "}
+                {eligibleAttackNames(build.attacks).join(" or ")}
+              </li>
+            )}
           </ul>
 
           <div className="run-row">
@@ -120,7 +138,11 @@ export default function BuildsPanel() {
 
           {runError[build.id] && <p className="error">{runError[build.id]}</p>}
           {runResults[build.id] && (
-            <ResultsTable results={runResults[build.id]} attacks={build.attacks} />
+            <ResultsTable
+              results={runResults[build.id]}
+              attacks={build.attacks}
+              oncePerTurn={build.once_per_turn}
+            />
           )}
         </div>
         ),
