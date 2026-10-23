@@ -351,9 +351,11 @@ Response shape is identical to `/api/calculate`.
       simulated: the sum over eligible attacks of P(all earlier eligible
       ones missed) x that attack's hit/crit-weighted rider damage
       (checked in tests against all 400 d20 pairs).
-    - Results: separate "chance / damage" columns for the rider (it isn't
-      per attack); the round total includes it, and the without-power-
-      attack comparison recomputes it at the higher hit chances.
+    - Results: the rider gets its own damage column (it isn't per
+      attack), plus a "chance it lands" column when 2+ attacks are
+      eligible (with one, that's just its Hit%). The round total includes
+      it, and the without-power-attack comparison recomputes it at the
+      higher hit chances.
     - Saved builds store it (migration `0003`, a nullable column -- existing
       builds are unchanged).
     - Generic on purpose: step 13 can map Sneak Attack, Divine Smite-style

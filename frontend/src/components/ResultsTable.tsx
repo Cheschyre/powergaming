@@ -18,16 +18,21 @@ function pct(value: number): string {
  * Extra Attack with one weapon) this is the compact single-attack table;
  * otherwise identical attacks are grouped ("Greatsword ×2") and each group
  * gets its own Hit% and damage columns. Once-per-turn damage gets its own
- * chance/damage columns: it isn't per attack. The round total always comes
+ * damage column, since it isn't per attack -- plus a chance column when 2+
+ * attacks are eligible (with one, it's just that attack's Hit%). The round total always comes
  * from the API (`total_had`), never summed here.
  */
 export default function ResultsTable({ results, attacks, oncePerTurn }: ResultsTableProps) {
   const groups = groupAttacks(attacks);
   const showRider = results.some((r) => r.once_per_turn !== null);
   const riderName = oncePerTurn?.name ?? "Once per turn";
+  const showRiderChance =
+    showRider && attacks.filter((a) => a.once_per_turn_eligible).length >= 2;
   const riderCells = (r: ACResult) =>
     showRider && [
-      <td key="rider-chance">{r.once_per_turn ? pct(r.once_per_turn.chance) : "–"}</td>,
+      showRiderChance && (
+        <td key="rider-chance">{r.once_per_turn ? pct(r.once_per_turn.chance) : "–"}</td>
+      ),
       <td key="rider-dmg">{r.once_per_turn ? r.once_per_turn.had.toFixed(2) : "–"}</td>,
     ];
   const showWithoutPa = results.some((r) => r.total_had_without_power_attack !== null);
@@ -53,7 +58,7 @@ export default function ResultsTable({ results, attacks, oncePerTurn }: ResultsT
             <th>Crit%</th>
             <th>Damage per attack</th>
             {showRider && [
-              <th key="rider-chance">{riderName} chance</th>,
+              showRiderChance && <th key="rider-chance">{riderName} chance</th>,
               <th key="rider-dmg">{riderName} damage</th>,
             ]}
             <th>Damage per round</th>
@@ -88,7 +93,7 @@ export default function ResultsTable({ results, attacks, oncePerTurn }: ResultsT
             </th>
           ))}
           {showRider && (
-            <th colSpan={2} scope="colgroup" className="group-head">
+            <th colSpan={showRiderChance ? 2 : 1} scope="colgroup" className="group-head">
               {riderName}
             </th>
           )}
@@ -100,7 +105,10 @@ export default function ResultsTable({ results, attacks, oncePerTurn }: ResultsT
             <th key={`${g.indices[0]}-hit`}>Hit%</th>,
             <th key={`${g.indices[0]}-dmg`}>Damage</th>,
           ])}
-          {showRider && [<th key="rider-chance">Chance</th>, <th key="rider-dmg">Damage</th>]}
+          {showRider && [
+            showRiderChance && <th key="rider-chance">Chance</th>,
+            <th key="rider-dmg">Damage</th>,
+          ]}
         </tr>
       </thead>
       <tbody>

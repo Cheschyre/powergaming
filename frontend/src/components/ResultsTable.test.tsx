@@ -99,12 +99,15 @@ describe("ResultsTable", () => {
     expect(screen.queryByRole("columnheader", { name: "Without power attack" })).not.toBeInTheDocument();
   });
 
-  it("adds once-per-turn chance and damage columns to the compact table", () => {
+  const sneak = { name: "Sneak Attack", num_dice: 3, die_sides: 6, modifier: 0 };
+
+  it("adds just a damage column when one attack carries once-per-turn damage", () => {
+    // Its chance would only repeat that attack's Hit%.
     render(
       <ResultsTable
-        attacks={[greatsword]}
-        oncePerTurn={{ name: "Sneak Attack", num_dice: 3, die_sides: 6, modifier: 0 }}
-        results={[acResult({ once_per_turn: { chance: 0.65, had: 7.35 }, total_had: 16.1 })]}
+        attacks={[{ ...greatsword, once_per_turn_eligible: true }]}
+        oncePerTurn={sneak}
+        results={[acResult({ once_per_turn: { chance: 0.7, had: 7.35 }, total_had: 16.1 })]}
       />,
     );
     expect(screen.getAllByRole("columnheader").map((h) => h.textContent)).toEqual([
@@ -112,22 +115,37 @@ describe("ResultsTable", () => {
       "Hit%",
       "Crit%",
       "Damage per attack",
-      "Sneak Attack chance",
       "Sneak Attack damage",
       "Damage per round",
     ]);
-    expect(cells(bodyRows()[0])).toEqual(["15", "70.0%", "5.0%", "8.75", "65.0%", "7.35", "16.10"]);
+    expect(cells(bodyRows()[0])).toEqual(["15", "70.0%", "5.0%", "8.75", "7.35", "16.10"]);
+  });
+
+  it("adds a chance column too when 2+ attacks are eligible", () => {
+    const eligible = { ...greatsword, once_per_turn_eligible: true };
+    render(
+      <ResultsTable
+        attacks={[eligible, eligible]}
+        oncePerTurn={sneak}
+        results={[acResult({ once_per_turn: { chance: 0.91, had: 9.5 } }, 2)]}
+      />,
+    );
+    expect(screen.getByRole("columnheader", { name: "Sneak Attack chance" })).toBeInTheDocument();
+    expect(cells(bodyRows()[0])).toEqual(expect.arrayContaining(["91.0%", "9.50"]));
   });
 
   it("gives once-per-turn damage its own column group when attacks differ", () => {
     render(
       <ResultsTable
-        attacks={[greatsword, handaxe]}
-        oncePerTurn={{ name: "Sneak Attack", num_dice: 3, die_sides: 6, modifier: 0 }}
+        attacks={[
+          { ...greatsword, once_per_turn_eligible: true },
+          { ...handaxe, once_per_turn_eligible: true },
+        ]}
+        oncePerTurn={sneak}
         results={[acResult({ once_per_turn: { chance: 0.8775, had: 9.92 } }, 2)]}
       />,
     );
-    expect(screen.getByRole("columnheader", { name: "Sneak Attack" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Sneak Attack" })).toHaveAttribute("colspan", "2");
     expect(cells(bodyRows()[0])).toEqual(
       expect.arrayContaining(["87.8%", "9.92"]),
     );
@@ -136,5 +154,17 @@ describe("ResultsTable", () => {
   it("has no once-per-turn columns when the round has none", () => {
     render(<ResultsTable attacks={[greatsword]} results={[acResult()]} />);
     expect(screen.queryByRole("columnheader", { name: /chance/ })).not.toBeInTheDocument();
+  });
+
+  it("drops the chance sub-column in the grouped table with one eligible attack", () => {
+    render(
+      <ResultsTable
+        attacks={[{ ...greatsword, once_per_turn_eligible: true }, handaxe]}
+        oncePerTurn={sneak}
+        results={[acResult({ once_per_turn: { chance: 0.7, had: 7.35 } }, 2)]}
+      />,
+    );
+    expect(screen.getByRole("columnheader", { name: "Sneak Attack" })).toHaveAttribute("colspan", "1");
+    expect(screen.queryByRole("columnheader", { name: "Chance" })).not.toBeInTheDocument();
   });
 });
