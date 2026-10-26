@@ -162,6 +162,11 @@ export interface components {
              */
             disadvantage: boolean;
             /**
+             * Extra Crit Dice
+             * @default 0
+             */
+            extra_crit_dice: number;
+            /**
              * Modifier
              * @default 0
              */
@@ -193,6 +198,16 @@ export interface components {
              * @default 0
              */
             power_attack_penalty: number;
+            /**
+             * Reroll At Or Below
+             * @default 0
+             */
+            reroll_at_or_below: number;
+            /**
+             * Super Advantage
+             * @default false
+             */
+            super_advantage: boolean;
         };
         /**
          * AttackResult
@@ -239,6 +254,11 @@ export interface components {
              */
             disadvantage: boolean;
             /**
+             * Extra Crit Dice
+             * @default 0
+             */
+            extra_crit_dice: number;
+            /**
              * Modifier
              * @default 0
              */
@@ -249,6 +269,16 @@ export interface components {
             power_attack_bonus: number;
             /** Power Attack Penalty */
             power_attack_penalty: number;
+            /**
+             * Reroll At Or Below
+             * @default 0
+             */
+            reroll_at_or_below: number;
+            /**
+             * Super Advantage
+             * @default false
+             */
+            super_advantage: boolean;
         };
         /** BreakevenResponse */
         BreakevenResponse: {

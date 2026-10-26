@@ -29,6 +29,14 @@ describe("groupAttacks", () => {
     expect(groupAttacks([greatsword, { ...greatsword, crit_range: 19 }])).toHaveLength(2);
   });
 
+  it("splits on the step 12 options, but ignores 3d20 without advantage", () => {
+    expect(attackKey({ ...greatsword, extra_crit_dice: 1 })).not.toBe(attackKey(greatsword));
+    expect(attackKey({ ...greatsword, reroll_at_or_below: 2 })).not.toBe(attackKey(greatsword));
+    expect(attackKey({ ...greatsword, super_advantage: true })).toBe(attackKey(greatsword));
+    const adv = { ...greatsword, advantage: true };
+    expect(attackKey({ ...adv, super_advantage: true })).not.toBe(attackKey(adv));
+  });
+
   it("ignores power-attack numbers while power attack is off", () => {
     const leftover = { ...greatsword, power_attack_bonus: 3 };
     expect(attackKey(leftover)).toBe(attackKey(greatsword));
@@ -82,5 +90,26 @@ describe("once-per-turn damage", () => {
     expect(describeOncePerTurn(newOncePerTurn({ num_dice: 2, die_sides: 8, modifier: 2 }))).toBe("2d8+2");
     const eligible = { ...handaxe, once_per_turn_eligible: true };
     expect(eligibleAttackNames([greatsword, eligible, eligible])).toEqual(["Handaxe"]);
+  });
+});
+
+describe("step 12 options in descriptions", () => {
+  it("mentions extra crit dice, rerolls and 3d20 advantage", () => {
+    expect(
+      describeAttack({
+        ...greatsword,
+        extra_crit_dice: 1,
+        reroll_at_or_below: 2,
+        advantage: true,
+        super_advantage: true,
+      }),
+    ).toBe("+8, 2d6+5, +1 crit die, reroll ≤2, adv (3d20)");
+    expect(describeAttack({ ...greatsword, crit_range: 19, extra_crit_dice: 2 })).toBe(
+      "+8, 2d6+5, crit 19–20, +2 crit dice",
+    );
+    // 3d20 doesn't apply while advantage is cancelled.
+    expect(
+      describeAttack({ ...greatsword, advantage: true, disadvantage: true, super_advantage: true }),
+    ).toBe("+8, 2d6+5");
   });
 });

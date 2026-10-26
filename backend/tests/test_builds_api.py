@@ -33,6 +33,9 @@ def test_create_build(client):
         "advantage": False,
         "disadvantage": False,
         "once_per_turn_eligible": False,
+        "super_advantage": False,
+        "extra_crit_dice": 0,
+        "reroll_at_or_below": 0,
     }
     assert body["once_per_turn"] is None
     assert "id" in body

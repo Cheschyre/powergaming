@@ -8,17 +8,37 @@ unit tested and reused on its own.
 """
 
 
-def average_damage(num_dice: int, die_sides: int, modifier: int = 0) -> float:
+def die_average(die_sides: int, reroll_at_or_below: int = 0) -> float:
+    """
+    Average of one damage die. With `reroll_at_or_below` = N > 0, a die
+    showing N or lower is rerolled once and the new roll kept (2014 Great
+    Weapon Fighting is N = 2): faces above N count as rolled, and the N/S
+    chance of a reroll is worth a plain die's average.
+    """
+    plain = (die_sides + 1) / 2
+    n = min(reroll_at_or_below, die_sides)
+    if n <= 0:
+        return plain
+    kept = sum(range(n + 1, die_sides + 1)) / die_sides
+    return kept + (n / die_sides) * plain
+
+
+def average_damage(
+    num_dice: int, die_sides: int, modifier: int = 0, reroll_at_or_below: int = 0
+) -> float:
     """Average damage before accuracy is factored in."""
-    die_average = (die_sides + 1) / 2
-    return (die_average * num_dice) + modifier
+    return die_average(die_sides, reroll_at_or_below) * num_dice + modifier
 
 
-def get_roll_distribution(advantage: bool = False, disadvantage: bool = False) -> dict[int, float]:
+def get_roll_distribution(
+    advantage: bool = False, disadvantage: bool = False, super_advantage: bool = False
+) -> dict[int, float]:
     """
     Probability of each d20 face (1-20) coming up as the roll used for an
     attack, accounting for advantage/disadvantage. Advantage and
-    disadvantage cancel each other out per 5e RAW.
+    disadvantage cancel each other out per 5e RAW. `super_advantage`
+    (Elven Accuracy) rolls three dice instead of two -- only when the
+    attack actually has advantage.
     """
     if advantage and disadvantage:
         advantage = disadvantage = False
@@ -26,15 +46,16 @@ def get_roll_distribution(advantage: bool = False, disadvantage: bool = False) -
     if not advantage and not disadvantage:
         return {face: 1 / 20 for face in range(1, 21)}
 
-    dist = {}
-    for face in range(1, 21):
-        if advantage:
-            # P(max(d1, d2) == face)
-            dist[face] = (2 * face - 1) / 400
-        else:
-            # P(min(d1, d2) == face)
-            dist[face] = (2 * (21 - face) - 1) / 400
-    return dist
+    # P(highest of k d20s <= f) = (f/20)^k, so P(highest == f) is the
+    # difference; disadvantage is the mirror image (lowest of two).
+    dice = 3 if advantage and super_advantage else 2
+
+    def p_highest(face: int) -> float:
+        return (face**dice - (face - 1) ** dice) / 20**dice
+
+    if advantage:
+        return {face: p_highest(face) for face in range(1, 21)}
+    return {face: p_highest(21 - face) for face in range(1, 21)}
 
 
 def hit_chance(
@@ -43,12 +64,14 @@ def hit_chance(
     power_attack_penalty: int = 0,
     advantage: bool = False,
     disadvantage: bool = False,
+    *,
+    super_advantage: bool = False,
 ) -> float:
     """
     Chance to hit. 5e RAW: natural 1 always misses, natural 20 always hits.
     """
     effective_bonus = attack_bonus + power_attack_penalty
-    dist = get_roll_distribution(advantage, disadvantage)
+    dist = get_roll_distribution(advantage, disadvantage, super_advantage)
 
     total = 0.0
     for face, prob in dist.items():
@@ -68,6 +91,8 @@ def crit_chance(
     advantage: bool = False,
     disadvantage: bool = False,
     crit_range: int = 20,
+    *,
+    super_advantage: bool = False,
 ) -> float:
     """
     Chance of landing a critical hit. A roll still has to hit (or be a
@@ -76,7 +101,7 @@ def crit_chance(
     the way a natural 20 does.
     """
     effective_bonus = attack_bonus + power_attack_penalty
-    dist = get_roll_distribution(advantage, disadvantage)
+    dist = get_roll_distribution(advantage, disadvantage, super_advantage)
 
     total = 0.0
     for face, prob in dist.items():
@@ -99,20 +124,40 @@ def had(
     advantage: bool = False,
     disadvantage: bool = False,
     crit_range: int = 20,
+    *,
+    super_advantage: bool = False,
+    extra_crit_dice: int = 0,
+    reroll_at_or_below: int = 0,
 ) -> float:
     """
     Hit-adjusted damage (HAD): expected damage per attack, weighted by hit
     chance and crit chance. Per RAW, a crit doubles dice only -- flat
     modifiers (including power attack bonus damage) are not doubled.
+    `extra_crit_dice` adds that many more weapon dice on a crit (Savage
+    Attacks, Brutal Critical, Piercer); rerolls apply to every weapon die.
     """
-    total_hit = hit_chance(attack_bonus, target_ac, power_attack_penalty, advantage, disadvantage)
+    total_hit = hit_chance(
+        attack_bonus,
+        target_ac,
+        power_attack_penalty,
+        advantage,
+        disadvantage,
+        super_advantage=super_advantage,
+    )
     crit_p = crit_chance(
-        attack_bonus, target_ac, power_attack_penalty, advantage, disadvantage, crit_range
+        attack_bonus,
+        target_ac,
+        power_attack_penalty,
+        advantage,
+        disadvantage,
+        crit_range,
+        super_advantage=super_advantage,
     )
     normal_p = total_hit - crit_p
 
-    normal_dmg = average_damage(num_dice, die_sides, modifier + power_attack_bonus)
-    crit_dmg = average_damage(num_dice * 2, die_sides, modifier + power_attack_bonus)
+    flat = modifier + power_attack_bonus
+    normal_dmg = average_damage(num_dice, die_sides, flat, reroll_at_or_below)
+    crit_dmg = average_damage(num_dice * 2 + extra_crit_dice, die_sides, flat, reroll_at_or_below)
 
     return normal_p * normal_dmg + crit_p * crit_dmg
 
@@ -155,6 +200,10 @@ def find_power_attack_breakeven(
     crit_range: int = 20,
     ac_min: int = 1,
     ac_max: int = 30,
+    *,
+    super_advantage: bool = False,
+    extra_crit_dice: int = 0,
+    reroll_at_or_below: int = 0,
 ):
     """
     Scan an AC range and compare a normal attack against a GWM/Sharpshooter
@@ -174,6 +223,9 @@ def find_power_attack_breakeven(
             advantage,
             disadvantage,
             crit_range,
+            super_advantage=super_advantage,
+            extra_crit_dice=extra_crit_dice,
+            reroll_at_or_below=reroll_at_or_below,
         )
         power = had(
             attack_bonus,
@@ -186,6 +238,9 @@ def find_power_attack_breakeven(
             advantage,
             disadvantage,
             crit_range,
+            super_advantage=super_advantage,
+            extra_crit_dice=extra_crit_dice,
+            reroll_at_or_below=reroll_at_or_below,
         )
         results.append((ac, normal, power))
 

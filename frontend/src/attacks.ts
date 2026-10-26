@@ -23,6 +23,9 @@ export function newAttack(overrides: Partial<AttackEntry> = {}): AttackEntry {
     power_attack_bonus: 10,
     power_attack_penalty: -5,
     once_per_turn_eligible: false,
+    super_advantage: false,
+    extra_crit_dice: 0,
+    reroll_at_or_below: 0,
     ...overrides,
   };
 }
@@ -57,6 +60,9 @@ export function roundProblem(round: Round): string | null {
  */
 export function attackKey(a: AttackEntry): string {
   return JSON.stringify([
+    hasSuperAdvantage(a),
+    a.extra_crit_dice,
+    a.reroll_at_or_below,
     a.name,
     a.attack_bonus,
     a.num_dice,
@@ -69,6 +75,11 @@ export function attackKey(a: AttackEntry): string {
     a.power_attack ? a.power_attack_bonus : null,
     a.power_attack ? a.power_attack_penalty : null,
   ]);
+}
+
+/** Super-advantage only counts when the attack really has advantage. */
+export function hasSuperAdvantage(a: AttackEntry): boolean {
+  return a.super_advantage && a.advantage && !a.disadvantage;
 }
 
 export interface AttackGroup {
@@ -93,14 +104,18 @@ function signed(n: number): string {
   return n >= 0 ? `+${n}` : `${n}`;
 }
 
-/** e.g. "+8, 2d6+5, crit 19–20, adv, PA +10/−5" */
+/** e.g. "+8, 2d6+5, crit 19–20, +1 crit die, reroll ≤2, adv (3d20), PA +10/−5" */
 export function describeAttack(a: AttackEntry): string {
   const parts = [
     signed(a.attack_bonus),
     `${a.num_dice}d${a.die_sides}${a.modifier ? signed(a.modifier) : ""}`,
   ];
   if (a.crit_range < 20) parts.push(`crit ${a.crit_range}–20`);
-  if (a.advantage && !a.disadvantage) parts.push("adv");
+  if (a.extra_crit_dice) {
+    parts.push(`+${a.extra_crit_dice} crit ${a.extra_crit_dice === 1 ? "die" : "dice"}`);
+  }
+  if (a.reroll_at_or_below > 0) parts.push(`reroll ≤${a.reroll_at_or_below}`);
+  if (a.advantage && !a.disadvantage) parts.push(hasSuperAdvantage(a) ? "adv (3d20)" : "adv");
   if (a.disadvantage && !a.advantage) parts.push("disadv");
   if (a.power_attack) {
     parts.push(`PA ${signed(a.power_attack_bonus)}/${signed(a.power_attack_penalty).replace("-", "−")}`);

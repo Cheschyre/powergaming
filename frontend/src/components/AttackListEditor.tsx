@@ -93,6 +93,20 @@ export default function AttackListEditor({
               min={2}
               max={20}
             />
+            <NumberField
+              label="Extra dice on a crit"
+              value={attack.extra_crit_dice}
+              onChange={(v) => update(i, { extra_crit_dice: v })}
+              min={0}
+              max={10}
+            />
+            <NumberField
+              label="Reroll damage dice at or below (0 = off)"
+              value={attack.reroll_at_or_below}
+              onChange={(v) => update(i, { reroll_at_or_below: v })}
+              min={0}
+              max={attack.die_sides - 1}
+            />
           </div>
           <div className="field-grid">
             <CheckboxField
@@ -100,6 +114,13 @@ export default function AttackListEditor({
               checked={attack.advantage}
               onChange={(v) => update(i, { advantage: v })}
             />
+            {attack.advantage && (
+              <CheckboxField
+                label="Roll 3d20 with advantage (Elven Accuracy)"
+                checked={attack.super_advantage}
+                onChange={(v) => update(i, { super_advantage: v })}
+              />
+            )}
             <CheckboxField
               label="Disadvantage"
               checked={attack.disadvantage}

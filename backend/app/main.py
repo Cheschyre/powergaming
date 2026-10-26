@@ -74,6 +74,7 @@ def breakeven(req: BreakevenRequest) -> BreakevenResponse:
         req.crit_range,
         req.ac_min,
         req.ac_max,
+        **req.engine_kwargs(),
     )
 
     rows = [

@@ -114,6 +114,9 @@ def test_0002_turns_num_attacks_into_identical_entries(db_url):
             "power_attack_bonus": 10,
             "power_attack_penalty": -5,
             "once_per_turn_eligible": False,
+            "super_advantage": False,
+            "extra_crit_dice": 0,
+            "reroll_at_or_below": 0,
         }
         assert builds["GWM Fighter"]["once_per_turn"] is None  # 0003: none yet
         assert len(rogue) == 1 and rogue[0]["advantage"] is True
