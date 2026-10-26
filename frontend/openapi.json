@@ -81,6 +81,13 @@
             "title": "Disadvantage",
             "type": "boolean"
           },
+          "extra_crit_dice": {
+            "default": 0,
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Extra Crit Dice",
+            "type": "integer"
+          },
           "modifier": {
             "default": 0,
             "title": "Modifier",
@@ -118,6 +125,18 @@
             "default": 0,
             "title": "Power Attack Penalty",
             "type": "integer"
+          },
+          "reroll_at_or_below": {
+            "default": 0,
+            "maximum": 999.0,
+            "minimum": 0.0,
+            "title": "Reroll At Or Below",
+            "type": "integer"
+          },
+          "super_advantage": {
+            "default": false,
+            "title": "Super Advantage",
+            "type": "boolean"
           }
         },
         "required": [
@@ -195,6 +214,13 @@
             "title": "Disadvantage",
             "type": "boolean"
           },
+          "extra_crit_dice": {
+            "default": 0,
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Extra Crit Dice",
+            "type": "integer"
+          },
           "modifier": {
             "default": 0,
             "title": "Modifier",
@@ -213,6 +239,18 @@
           "power_attack_penalty": {
             "title": "Power Attack Penalty",
             "type": "integer"
+          },
+          "reroll_at_or_below": {
+            "default": 0,
+            "maximum": 999.0,
+            "minimum": 0.0,
+            "title": "Reroll At Or Below",
+            "type": "integer"
+          },
+          "super_advantage": {
+            "default": false,
+            "title": "Super Advantage",
+            "type": "boolean"
           }
         },
         "required": [

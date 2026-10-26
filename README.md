@@ -4,14 +4,15 @@
 
 D&D 5e attack/damage probability calculator — hit chance, crit chance, and
 hit-adjusted damage (HAD), with advantage/disadvantage, expanded crit
-ranges, once-per-turn extra damage (Sneak Attack and similar), and a
-GWM/Sharpshooter-style power attack breakeven finder. Builds
+ranges, once-per-turn extra damage (Sneak Attack and similar), extra crit
+dice, rerolled damage dice, 3d20 advantage, and a GWM/Sharpshooter-style
+power attack breakeven finder. Builds
 can be saved and re-run against new target ACs without re-entering every
 field, and there's now a browser UI on top of the API.
 
 The original CLI script is now a full app with a versioned
 frontend/backend, a test environment, and a production environment on
-the home lab (steps 1-11 of the roadmap below are done; step 12 is
+the home lab (steps 1-12 of the roadmap below are done; step 13 is
 next).
 
 ## Structure
@@ -201,7 +202,20 @@ another:
 Optional per-entry fields and defaults: `name` ("Attack"), `modifier` (0),
 `crit_range` (20), `advantage` / `disadvantage` (false), `power_attack`
 (false), `power_attack_bonus` / `power_attack_penalty` (0),
-`once_per_turn_eligible` (false). 1-20 entries per round.
+`once_per_turn_eligible` (false), and these attack options (also taken
+by `/api/breakeven`):
+
+- `super_advantage` (false) -- advantage rolls three d20s and keeps the
+  best (Elven Accuracy). Ignored unless the attack has advantage (and not
+  also disadvantage).
+- `extra_crit_dice` (0, up to 10) -- that many more weapon dice on a crit,
+  on top of the doubled ones (Savage Attacks, Brutal Critical, Piercer).
+- `reroll_at_or_below` (0 = off) -- a weapon damage die showing this or
+  lower is rerolled once and the new roll kept (2014 Great Weapon
+  Fighting: 2). Must be below `die_sides`. Applies to crit dice too, not
+  to once-per-turn damage.
+
+1-20 entries per round.
 
 Optional **once-per-turn damage** (Sneak Attack, smite-style riders):
 
@@ -363,16 +377,23 @@ Response shape is identical to `/api/calculate`.
     - Also: nginx now sends `Cache-Control: no-cache` for `index.html`
       (hashed `/assets/` are cached for good), so a new release shows up
       without a hard refresh.
-12. More attack options in the engine, also named for what they do
-    rather than which feat grants them:
-    - Elven Accuracy -- "super-advantage" (roll three d20s, keep the
-      best): a new roll-distribution function alongside the existing
-      advantage/disadvantage one.
-    - Piercer -- reroll 1s on damage dice: a damage-average formula
-      tweak. Slasher/Crusher are mostly non-damage secondary effects and
-      may not be worth modeling numerically.
-    - Crossbow Expert needs nothing new: the bonus-action shot is just
-      another attack entry since step 9.
+12. ~~More attack options in the engine~~ -- done, each a per-attack
+    setting named for what it does (all exact, checked against brute-force
+    enumeration in tests):
+    - **Roll 3d20 with advantage** (Elven Accuracy): highest of three
+      d20s, only when the attack has advantage.
+    - **Extra dice on a crit** (Savage Attacks, Brutal Critical, Piercer's
+      crit bonus).
+    - **Reroll damage dice at or below N** (2014 Great Weapon Fighting is
+      N = 2), applied to every weapon die including crit dice.
+    - The breakeven finder takes all three too.
+    - Not modeled, by choice: "treat low dice as N" (2024 Great Weapon
+      Fighting, Elemental Adept) and Piercer's once-per-turn reroll of one
+      die (about +1 damage). Slasher/Crusher are mostly non-damage
+      effects. Crossbow Expert needs nothing new: the bonus-action shot is
+      just another attack entry.
+    - No migration: the options live in each attack's JSON and default to
+      off for existing builds.
 13. Mini character sheet -- enter a character instead of final numbers:
     ability scores, character level (proficiency derived: +2 at 1-4 up to
     +6 at 17-20), weapons, +N magic items, fighting styles, Extra Attack,

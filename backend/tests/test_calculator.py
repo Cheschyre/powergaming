@@ -9,7 +9,9 @@ import pytest
 from app.calculator import (
     average_damage,
     crit_chance,
+    die_average,
     find_power_attack_breakeven,
+    get_roll_distribution,
     had,
     hit_chance,
     once_per_turn_damage,
@@ -160,3 +162,72 @@ def test_once_per_turn_matches_brute_force_over_every_d20_pair():
     chance, expected = once_per_turn_damage(chances, 2, 6)
     assert chance == pytest.approx(hits / 400)
     assert expected == pytest.approx(total / 400)
+
+
+# --- Step 12: super-advantage, extra crit dice, rerolling low damage dice ---
+
+
+def test_super_advantage_distribution_matches_brute_force():
+    """Highest of three d20s, counted over all 8000 rolls."""
+    counts = dict.fromkeys(range(1, 21), 0)
+    for a in range(1, 21):
+        for b in range(1, 21):
+            for c in range(1, 21):
+                counts[max(a, b, c)] += 1
+    dist = get_roll_distribution(advantage=True, super_advantage=True)
+    for face in range(1, 21):
+        assert dist[face] == pytest.approx(counts[face] / 8000)
+
+
+def test_super_advantage_hit_and_crit_chance():
+    # Needing an 11: advantage misses only if both dice are 1-10 (25%),
+    # super-advantage only if all three are (12.5%).
+    assert hit_chance(5, 16, advantage=True) == pytest.approx(0.75)
+    assert hit_chance(5, 16, advantage=True, super_advantage=True) == pytest.approx(0.875)
+    assert crit_chance(5, 16, advantage=True, super_advantage=True) == pytest.approx(
+        1 - (19 / 20) ** 3
+    )
+
+
+@pytest.mark.parametrize(("advantage", "disadvantage"), [(False, False), (True, True)])
+def test_super_advantage_needs_advantage(advantage, disadvantage):
+    # No advantage (or advantage cancelled by disadvantage): a straight roll.
+    assert hit_chance(5, 16, 0, advantage, disadvantage, super_advantage=True) == pytest.approx(0.5)
+
+
+def test_super_advantage_does_not_change_disadvantage():
+    assert hit_chance(5, 16, disadvantage=True, super_advantage=True) == pytest.approx(0.25)
+
+
+@pytest.mark.parametrize(
+    ("sides", "threshold", "expected"),
+    [
+        (6, 0, 3.5),
+        (6, 2, 25 / 6),  # 2014 Great Weapon Fighting on a d6: 4.17
+        (12, 2, 22 / 3),  # ... and on a d12: 7.33
+        (8, 1, 4.9375),  # reroll 1s on a d8
+    ],
+)
+def test_die_average_with_rerolls(sides, threshold, expected):
+    assert die_average(sides, threshold) == pytest.approx(expected)
+
+
+def test_die_average_reroll_matches_brute_force():
+    # Every (first, second) pair on a d10, rerolling 1-3 and keeping the second.
+    total = sum(
+        second if first <= 3 else first for first in range(1, 11) for second in range(1, 11)
+    )
+    assert die_average(10, 3) == pytest.approx(total / 100)
+
+
+def test_extra_crit_dice_only_add_to_crits():
+    # +8 vs AC 15, 2d6+5: 65% normal hits (12) and 5% crits, which roll
+    # 4d6 + 1 extra d6 (17.5) + 5 = 22.5.
+    assert had(8, 15, 2, 6, 5) == pytest.approx(0.65 * 12 + 0.05 * 19)
+    assert had(8, 15, 2, 6, 5, extra_crit_dice=1) == pytest.approx(0.65 * 12 + 0.05 * 22.5)
+
+
+def test_rerolls_apply_to_every_weapon_die_including_crit_dice():
+    die = 25 / 6  # d6 with 1s and 2s rerolled
+    expected = 0.65 * (2 * die + 5) + 0.05 * (5 * die + 5)
+    assert had(8, 15, 2, 6, 5, extra_crit_dice=1, reroll_at_or_below=2) == pytest.approx(expected)

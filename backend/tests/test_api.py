@@ -158,6 +158,41 @@ def test_once_per_turn_needs_an_eligible_attack():
     assert "eligible for Sneak Attack" in resp.text
 
 
+def test_attack_options_reach_the_engine():
+    entry = {
+        **GREATSWORD,
+        "advantage": True,
+        "super_advantage": True,
+        "extra_crit_dice": 1,
+        "reroll_at_or_below": 2,
+    }
+    attack = client.post("/api/calculate", json={"ac_list": [15], "attacks": [entry]}).json()[
+        "results"
+    ][0]["attacks"][0]
+    # +8 vs AC 15 needs a 7: all three dice must show 1-6 to miss.
+    assert attack["hit_chance"] == pytest.approx(1 - (6 / 20) ** 3)
+    assert attack["had"] == pytest.approx(
+        had(
+            8,
+            15,
+            2,
+            6,
+            5,
+            advantage=True,
+            super_advantage=True,
+            extra_crit_dice=1,
+            reroll_at_or_below=2,
+        )
+    )
+
+
+@pytest.mark.parametrize("threshold", [6, 7, -1])
+def test_reroll_threshold_must_be_below_die_size(threshold):
+    entry = {**GREATSWORD, "reroll_at_or_below": threshold}
+    resp = client.post("/api/calculate", json={"ac_list": [15], "attacks": [entry]})
+    assert resp.status_code == 422
+
+
 def test_calculate_rejects_bad_ac():
     resp = client.post("/api/calculate", json={"ac_list": [999], "attacks": [HANDAXE]})
     assert resp.status_code == 422  # FastAPI validation error
@@ -193,6 +228,23 @@ def test_breakeven_basic():
     body = resp.json()
     assert len(body["rows"]) == 30
     assert isinstance(body["crossovers"], list)
+
+
+def test_breakeven_takes_attack_options():
+    base = {
+        "attack_bonus": 8,
+        "num_dice": 1,
+        "die_sides": 12,
+        "modifier": 3,
+        "power_attack_bonus": 10,
+        "power_attack_penalty": -5,
+        "ac_min": 15,
+        "ac_max": 15,
+    }
+    plain = client.post("/api/breakeven", json=base).json()["rows"][0]
+    gwf = client.post("/api/breakeven", json={**base, "reroll_at_or_below": 2}).json()["rows"][0]
+    assert gwf["normal_had"] > plain["normal_had"]
+    assert gwf["normal_had"] == pytest.approx(had(8, 15, 1, 12, 3, reroll_at_or_below=2))
 
 
 def test_breakeven_rejects_inverted_ac_range():

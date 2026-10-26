@@ -14,6 +14,9 @@ export default function BreakevenPanel() {
   const [advantage, setAdvantage] = useState(false);
   const [disadvantage, setDisadvantage] = useState(false);
   const [critRange, setCritRange] = useState(20);
+  const [superAdvantage, setSuperAdvantage] = useState(false);
+  const [extraCritDice, setExtraCritDice] = useState(0);
+  const [rerollAtOrBelow, setRerollAtOrBelow] = useState(0);
   const [acMin, setAcMin] = useState(1);
   const [acMax, setAcMax] = useState(30);
 
@@ -37,6 +40,9 @@ export default function BreakevenPanel() {
         advantage,
         disadvantage,
         crit_range: critRange,
+        super_advantage: superAdvantage,
+        extra_crit_dice: extraCritDice,
+        reroll_at_or_below: rerollAtOrBelow,
         ac_min: acMin,
         ac_max: acMax,
       });
@@ -75,11 +81,32 @@ export default function BreakevenPanel() {
             min={2}
             max={20}
           />
+          <NumberField
+            label="Extra dice on a crit"
+            value={extraCritDice}
+            onChange={setExtraCritDice}
+            min={0}
+            max={10}
+          />
+          <NumberField
+            label="Reroll damage dice at or below (0 = off)"
+            value={rerollAtOrBelow}
+            onChange={setRerollAtOrBelow}
+            min={0}
+            max={dieSides - 1}
+          />
           <NumberField label="AC range: min" value={acMin} onChange={setAcMin} min={1} max={30} />
           <NumberField label="AC range: max" value={acMax} onChange={setAcMax} min={1} max={30} />
         </div>
         <div className="field-grid">
           <CheckboxField label="Advantage" checked={advantage} onChange={setAdvantage} />
+          {advantage && (
+            <CheckboxField
+              label="Roll 3d20 with advantage (Elven Accuracy)"
+              checked={superAdvantage}
+              onChange={setSuperAdvantage}
+            />
+          )}
           <CheckboxField label="Disadvantage" checked={disadvantage} onChange={setDisadvantage} />
         </div>
         <button type="submit" disabled={loading}>

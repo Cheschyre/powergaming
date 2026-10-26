@@ -58,4 +58,25 @@ describe("BreakevenPanel", () => {
     expect(await screen.findByText(/ac_max must be greater/)).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
+
+  it("sends the step 12 options", async () => {
+    vi.mocked(api.breakeven).mockResolvedValue({ rows: [], crossovers: [] });
+    const user = userEvent.setup();
+    render(<BreakevenPanel />);
+
+    await user.click(screen.getByLabelText("Advantage"));
+    await user.click(screen.getByLabelText(/Roll 3d20/));
+    await user.clear(screen.getByLabelText("Reroll damage dice at or below (0 = off)"));
+    await user.type(screen.getByLabelText("Reroll damage dice at or below (0 = off)"), "2");
+    await user.click(screen.getByRole("button", { name: "Find Breakeven" }));
+
+    expect(api.breakeven).toHaveBeenCalledWith(
+      expect.objectContaining({
+        advantage: true,
+        super_advantage: true,
+        extra_crit_dice: 0,
+        reroll_at_or_below: 2,
+      }),
+    );
+  });
 });

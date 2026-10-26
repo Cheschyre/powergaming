@@ -7,6 +7,38 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 MAX_ATTACKS_PER_ROUND = 20
 
 
+class AttackOptions(BaseModel):
+    """Optional engine features shared by round attacks and the breakeven
+    finder, named for what they do rather than the feat that grants them."""
+
+    # Advantage rolls three d20s and keeps the best (Elven Accuracy). Only
+    # counts when the attack has advantage (and not also disadvantage).
+    super_advantage: bool = False
+    # More weapon dice on a crit, on top of the doubled ones (Savage
+    # Attacks, Brutal Critical, Piercer).
+    extra_crit_dice: int = Field(0, ge=0, le=10)
+    # Reroll a weapon damage die showing this or lower, once, keeping the
+    # new roll (2014 Great Weapon Fighting: 2). 0 = off.
+    reroll_at_or_below: int = Field(0, ge=0, le=999)
+
+    @model_validator(mode="after")
+    def reroll_below_die_size(self):
+        die_sides = getattr(self, "die_sides", None)
+        if die_sides is not None and self.reroll_at_or_below >= die_sides:
+            raise ValueError(
+                f"Reroll threshold must be below the die size (d{die_sides}): "
+                "rerolling every result changes nothing."
+            )
+        return self
+
+    def engine_kwargs(self) -> dict:
+        return {
+            "super_advantage": self.super_advantage,
+            "extra_crit_dice": self.extra_crit_dice,
+            "reroll_at_or_below": self.reroll_at_or_below,
+        }
+
+
 def _check_ac_list(v: list[int]) -> list[int]:
     for ac in v:
         if not (1 <= ac <= 30):
@@ -14,7 +46,7 @@ def _check_ac_list(v: list[int]) -> list[int]:
     return v
 
 
-class AttackEntry(BaseModel):
+class AttackEntry(AttackOptions):
     """One attack roll in a round, with everything that can differ between
     attacks -- including whether this particular attack uses power attack
     (GWM/Sharpshooter). A round is a list of these; repeat an entry for
@@ -112,7 +144,7 @@ class CalculateResponse(BaseModel):
     results: list[ACResult]
 
 
-class BreakevenRequest(BaseModel):
+class BreakevenRequest(AttackOptions):
     attack_bonus: int
     num_dice: int = Field(..., ge=1, le=100)
     die_sides: int = Field(..., ge=2, le=1000)

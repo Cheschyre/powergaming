@@ -17,7 +17,12 @@ def attack_result(attack: AttackEntry, ac: int, use_power_attack: bool) -> Attac
     penalty = attack.power_attack_penalty if use_power_attack else 0
     return AttackResult(
         hit_chance=hit_chance(
-            attack.attack_bonus, ac, penalty, attack.advantage, attack.disadvantage
+            attack.attack_bonus,
+            ac,
+            penalty,
+            attack.advantage,
+            attack.disadvantage,
+            super_advantage=attack.super_advantage,
         ),
         crit_chance=crit_chance(
             attack.attack_bonus,
@@ -26,6 +31,7 @@ def attack_result(attack: AttackEntry, ac: int, use_power_attack: bool) -> Attac
             attack.advantage,
             attack.disadvantage,
             attack.crit_range,
+            super_advantage=attack.super_advantage,
         ),
         had=had(
             attack.attack_bonus,
@@ -38,6 +44,7 @@ def attack_result(attack: AttackEntry, ac: int, use_power_attack: bool) -> Attac
             attack.advantage,
             attack.disadvantage,
             attack.crit_range,
+            **attack.engine_kwargs(),
         ),
     )
 

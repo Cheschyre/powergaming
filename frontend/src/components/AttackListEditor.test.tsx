@@ -87,4 +87,28 @@ describe("AttackListEditor", () => {
     expect(screen.getByRole("button", { name: "+ Add attack" })).toBeDisabled();
     expect(within(row(1)).getByRole("button", { name: "Duplicate" })).toBeDisabled();
   });
+
+  it("offers 3d20 only with advantage, and edits crit dice and rerolls", async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={[greatsword]} />);
+
+    expect(within(row(1)).queryByLabelText(/Roll 3d20/)).not.toBeInTheDocument();
+    await user.click(within(row(1)).getByLabelText("Advantage"));
+    await user.click(within(row(1)).getByLabelText(/Roll 3d20/));
+
+    const critDice = within(row(1)).getByLabelText("Extra dice on a crit");
+    await user.clear(critDice);
+    await user.type(critDice, "1");
+    const reroll = within(row(1)).getByLabelText("Reroll damage dice at or below (0 = off)");
+    await user.clear(reroll);
+    await user.type(reroll, "2");
+    expect(reroll).toHaveAttribute("max", "5"); // below the d6
+
+    expect(latest()[0]).toMatchObject({
+      advantage: true,
+      super_advantage: true,
+      extra_crit_dice: 1,
+      reroll_at_or_below: 2,
+    });
+  });
 });
