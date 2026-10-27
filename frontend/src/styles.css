@@ -326,3 +326,16 @@ button.secondary {
 .derived-attacks {
   margin-top: 0.75rem;
 }
+
+.attribution {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid #2c2f36;
+  color: #7d8089;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.attribution a {
+  color: #9aa7c7;
+}

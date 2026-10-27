@@ -8,12 +8,13 @@ ranges, once-per-turn extra damage (Sneak Attack and similar), extra crit
 dice, rerolled damage dice, 3d20 advantage, and a GWM/Sharpshooter-style
 power attack breakeven finder. Builds
 can be saved and re-run against new target ACs without re-entering every
-field, and there's now a browser UI on top of the API.
+field, and characters (2014 Fighter or Rogue) can be entered as a mini
+character sheet that works out their attacks for you.
 
 The original CLI script is now a full app with a versioned
 frontend/backend, a test environment, and a production environment on
-the home lab (steps 1-12 of the roadmap below are done; step 13 is
-next).
+the home lab (steps 1-12 of the roadmap below are done, and the first
+slice of step 13; its later slices are next).
 
 ## Structure
 
@@ -24,22 +25,28 @@ powergaming/
 │   │   ├── calculator.py    # pure math -- ported from the original CLI script
 │   │   ├── service.py       # glue between calculator.py and the API schemas
 │   │   ├── schemas.py       # Pydantic request/response models
-│   │   ├── models.py        # SQLAlchemy ORM models (the `builds` table)
+│   │   ├── models.py        # SQLAlchemy ORM models (`builds`, `characters`)
 │   │   ├── db.py            # DB engine/session setup
 │   │   ├── crud.py          # database read/write functions
+│   │   ├── character.py     # character sheet -> attack entries (2014 rules)
+│   │   ├── srd.py           # SRD 5.1 weapons table (CC-BY-4.0, see below)
 │   │   ├── main.py          # FastAPI app, /api/calculate, /api/breakeven
 │   │   └── routers/
-│   │       └── builds.py    # /api/builds CRUD + per-build calculate
+│   │       ├── builds.py      # /api/builds CRUD + per-build calculate
+│   │       └── characters.py  # /api/characters, /api/srd/weapons
 │   ├── alembic/              # database migrations
 │   │   ├── env.py
 │   │   └── versions/
-│   │       └── 0001_create_builds_table.py
+│   │       └── 0001_... 0004_...  # one file per schema change
 │   ├── alembic.ini
 │   ├── tests/
 │   │   ├── conftest.py           # shared test DB fixture (in-memory SQLite)
 │   │   ├── test_calculator.py    # unit tests on the math
 │   │   ├── test_api.py           # integration tests on /api/calculate, /api/breakeven
-│   │   └── test_builds_api.py    # integration tests on /api/builds
+│   │   ├── test_builds_api.py    # integration tests on /api/builds
+│   │   ├── test_character.py     # character rules, hand-calculated
+│   │   ├── test_characters_api.py  # /api/characters CRUD, save as build
+│   │   └── test_migrations.py    # Alembic upgrades/downgrades with data
 │   ├── requirements.txt       # runtime deps (what the API image installs)
 │   ├── requirements-dev.txt   # + test/lint tooling, for CI and local dev
 │   └── Dockerfile
@@ -49,7 +56,8 @@ powergaming/
 │   │   ├── types.ts           # friendly names for the generated API types
 │   │   ├── api.ts             # fetch wrapper, one function per endpoint
 │   │   ├── App.tsx            # tab switcher
-│   │   └── components/        # CalculatorPanel, BreakevenPanel, BuildsPanel, ...
+│   │   ├── characters.ts      # character sheet helpers (defaults, proficiency)
+│   │   └── components/        # CalculatorPanel, BuildsPanel, CharactersPanel, ...
 │   ├── vite.config.ts
 │   └── package.json
 ├── .github/
@@ -294,6 +302,50 @@ re-sending them:
 
 Response shape is identical to `/api/calculate`.
 
+### Characters (2014 rules, Fighter or Rogue)
+
+A character sheet is what a player enters; the server derives the round's
+attacks from it (`app/character.py`):
+
+```json
+{
+  "name": "Vex", "character_class": "rogue", "level": 5,
+  "strength": 10, "dexterity": 16,
+  "main_hand": {"srd_weapon": "shortsword"},
+  "off_hand": {"srd_weapon": "dagger"}
+}
+```
+
+Optional: `two_handed_grip` (versatile weapons), `fighting_style`
+(Fighter: `archery`, `dueling`, `great_weapon_fighting`,
+`two_weapon_fighting`), `subclass` (Fighter: `champion`),
+`sneak_attack_can_trigger` (Rogue, default true), `other_to_hit`,
+`other_damage`. A weapon is `{"srd_weapon": key}` or `{"custom": {name,
+num_dice, die_sides, versatile_die_sides, finesse, light, heavy,
+two_handed, ranged}}`, plus `magic_bonus` (0-3) and `proficient`
+(default true). Combinations the rules don't allow (two-weapon fighting
+without light melee weapons, a two-handed grip with an off-hand weapon, a
+Rogue fighting style, ...) are a `422` with a readable message.
+
+Round toggles, sent alongside rather than stored: `{"advantage",
+"disadvantage", "power_attack"}` (power attack only applies to heavy
+melee or ranged weapons).
+
+- `GET /api/srd/weapons` -- the SRD weapons table (35 weapons).
+- `POST /api/characters/derive` `{character, toggles}` -- the derived
+  `attacks` and `once_per_turn` (Sneak Attack), in `/api/calculate`'s
+  shape.
+- `POST /api/characters/calculate` `{character, toggles, ac_list}` --
+  derive and calculate in one go: `attacks`, `once_per_turn`, `results`.
+- `POST /api/characters`, `GET /api/characters`,
+  `GET/PUT/DELETE /api/characters/{id}` -- saved characters. `PUT`
+  replaces the whole sheet (its rules span fields, so it's validated as
+  one unit).
+- `POST /api/characters/{id}/calculate` `{ac_list, toggles}`.
+- `POST /api/characters/{id}/save-as-build` `{name?, toggles}` -- saves
+  the derived round as a build (default name "Vex (level 5)"); a
+  snapshot that later character edits don't change.
+
 ## Project roadmap
 
 1. ~~Backend API wrapping the existing logic~~ -- done.
@@ -395,17 +447,20 @@ Response shape is identical to `/api/calculate`.
     - No migration: the options live in each attack's JSON and default to
       off for existing builds.
 13. Mini character sheet -- enter a character instead of final numbers.
+    First slice done; later slices below.
     The sheet *derives* attack entries (bonus, dice, modifier, options)
     on the server and runs them through the same engine, so it never does
     probability math itself and every engine feature (steps 9-12) works
     for it automatically.
 
-    **First slice (agreed, 2014 rules):**
+    **First slice -- done (2014 rules):**
     - Single class: **Fighter** or **Rogue**, level 1-20 (proficiency
       derived: +2 at 1-4 up to +6 at 17-20).
     - Inputs: name, class, level, STR and DEX scores, a main-hand weapon
       and an optional off-hand weapon, "two hands" for versatile weapons,
-      +N magic bonus and a "proficient" checkbox (default on) per weapon,
+      +N magic bonus and a "proficient" checkbox per weapon (set from the
+      class -- 2014 Rogues: simple weapons plus hand crossbows,
+      longswords, rapiers, shortswords -- and editable),
       plus manual "other to-hit" / "other damage" bonuses for anything
       not modeled.
     - Weapons: the 2014 SRD weapons table (dice and properties: finesse,
@@ -434,14 +489,18 @@ Response shape is identical to `/api/calculate`.
       like builds, and "Save as build" to compare a snapshot.
     - SRD 5.1 attribution (CC-BY-4.0) in the README and the app footer.
     - Left out on purpose: Action Surge (skews a per-round average),
-      races, multiclassing, other classes and subclass features.
+      races, multiclassing, other classes and subclass features, and the
+      3d20-advantage toggle (see below).
 
     **Later slices:** the level-by-level view (rebuild the attacks at each
     level -- proficiency, ability score increases, Extra Attack, Sneak
     Attack dice -- and show hit/crit/HAD and the power-attack breakeven
     across 1-20); more classes (Barbarian, Paladin, Ranger, Monk) and
     features (Action Surge, Rage, smites); races (e.g. Half-Orc Savage
-    Attacks via extra crit dice); a 2024 ruleset option (e.g. 2024 Great
+    Attacks via extra crit dice); an Elven Accuracy option on the sheet
+    ("roll 3d20 with advantage", stored on the character since it's a
+    feat -- the engine has supported it since step 12, it just isn't
+    exposed on characters yet); a 2024 ruleset option (e.g. 2024 Great
     Weapon Master adds proficiency with no -5, and Sharpshooter lost its
     -5/+10) -- the generic calculator already handles both editions via
     free numbers.
@@ -466,7 +525,20 @@ tests) was cleared in step 8. What's left, not yet scheduled:
   to `powergaming-prod` on a version tag on `main`. Prod rebuilds images
   from the tag rather than promoting the exact `:develop` images test
   ran; worth switching to promotion if test and prod ever drift.
-- No auth yet on the `/api/builds` endpoints -- anyone who can reach the
-  API can read/edit/delete any build. Fine while this is a single-person
+- No auth yet on the `/api/builds` and `/api/characters` endpoints --
+  anyone who can reach the API can read/edit/delete any build or
+  character. Fine while this is a single-person
   tool on the LAN; revisit once more users are introduced (see "Builds &
   comparison" territory -- not yet on this roadmap).
+
+## Attribution
+
+This work includes material taken from the System Reference Document 5.1
+("SRD 5.1") by Wizards of the Coast LLC and available at
+https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1
+is licensed under the Creative Commons Attribution 4.0 International
+License available at https://creativecommons.org/licenses/by/4.0/legalcode.
+
+Used here: the 2014 weapons table (`backend/app/srd.py`) and the class
+rules the character sheet derives attacks from (`backend/app/character.py`).
+The app shows the same notice in its footer.

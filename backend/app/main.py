@@ -42,7 +42,7 @@ def configure_cors(app: FastAPI, raw_origins: str) -> None:
     )
 
 
-app = FastAPI(title="Power Gaming Calculator API", version="0.4.0")
+app = FastAPI(title="Power Gaming Calculator API", version="0.6.0")
 configure_cors(app, os.environ.get("CORS_ALLOW_ORIGINS", DEFAULT_CORS_ALLOW_ORIGINS))
 
 app.include_router(builds.router)

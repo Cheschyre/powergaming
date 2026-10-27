@@ -44,6 +44,19 @@ export default function App() {
         {tab === "builds" && <BuildsPanel />}
         {tab === "characters" && <CharactersPanel />}
       </main>
+
+      <footer className="attribution">
+        This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”)
+        by Wizards of the Coast LLC, available at{" "}
+        <a href="https://dnd.wizards.com/resources/systems-reference-document">
+          dnd.wizards.com/resources/systems-reference-document
+        </a>
+        . The SRD 5.1 is licensed under the{" "}
+        <a href="https://creativecommons.org/licenses/by/4.0/legalcode">
+          Creative Commons Attribution 4.0 International License
+        </a>
+        .
+      </footer>
     </div>
   );
 }
