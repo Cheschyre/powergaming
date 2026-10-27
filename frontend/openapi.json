@@ -518,6 +518,224 @@
         "title": "CalculateResponse",
         "type": "object"
       },
+      "CharacterCalculateRequest": {
+        "properties": {
+          "ac_list": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 30,
+            "minItems": 1,
+            "title": "Ac List",
+            "type": "array"
+          },
+          "character": {
+            "$ref": "#/components/schemas/CharacterSheet"
+          },
+          "toggles": {
+            "$ref": "#/components/schemas/RoundToggles",
+            "default": {
+              "advantage": false,
+              "disadvantage": false,
+              "power_attack": false
+            }
+          }
+        },
+        "required": [
+          "character",
+          "ac_list"
+        ],
+        "title": "CharacterCalculateRequest",
+        "type": "object"
+      },
+      "CharacterCalculateResponse": {
+        "properties": {
+          "attacks": {
+            "items": {
+              "$ref": "#/components/schemas/AttackEntry"
+            },
+            "title": "Attacks",
+            "type": "array"
+          },
+          "once_per_turn": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OncePerTurn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ACResult"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "attacks",
+          "once_per_turn",
+          "results"
+        ],
+        "title": "CharacterCalculateResponse",
+        "type": "object"
+      },
+      "CharacterDeriveRequest": {
+        "properties": {
+          "character": {
+            "$ref": "#/components/schemas/CharacterSheet"
+          },
+          "toggles": {
+            "$ref": "#/components/schemas/RoundToggles",
+            "default": {
+              "advantage": false,
+              "disadvantage": false,
+              "power_attack": false
+            }
+          }
+        },
+        "required": [
+          "character"
+        ],
+        "title": "CharacterDeriveRequest",
+        "type": "object"
+      },
+      "CharacterSheet": {
+        "description": "What the player enters. Everything else (proficiency, attacks per\nround, Sneak Attack dice, crit range) is derived from the level.",
+        "properties": {
+          "character_class": {
+            "enum": [
+              "fighter",
+              "rogue"
+            ],
+            "title": "Character Class",
+            "type": "string"
+          },
+          "dexterity": {
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Dexterity",
+            "type": "integer"
+          },
+          "fighting_style": {
+            "default": "none",
+            "enum": [
+              "none",
+              "archery",
+              "dueling",
+              "great_weapon_fighting",
+              "two_weapon_fighting"
+            ],
+            "title": "Fighting Style",
+            "type": "string"
+          },
+          "level": {
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Level",
+            "type": "integer"
+          },
+          "main_hand": {
+            "$ref": "#/components/schemas/WeaponChoice"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "off_hand": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeaponChoice"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "other_damage": {
+            "default": 0,
+            "maximum": 20.0,
+            "minimum": -20.0,
+            "title": "Other Damage",
+            "type": "integer"
+          },
+          "other_to_hit": {
+            "default": 0,
+            "maximum": 20.0,
+            "minimum": -20.0,
+            "title": "Other To Hit",
+            "type": "integer"
+          },
+          "sneak_attack_can_trigger": {
+            "default": true,
+            "title": "Sneak Attack Can Trigger",
+            "type": "boolean"
+          },
+          "strength": {
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Strength",
+            "type": "integer"
+          },
+          "subclass": {
+            "default": "none",
+            "enum": [
+              "none",
+              "champion"
+            ],
+            "title": "Subclass",
+            "type": "string"
+          },
+          "two_handed_grip": {
+            "default": false,
+            "title": "Two Handed Grip",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "character_class",
+          "level",
+          "strength",
+          "dexterity",
+          "main_hand"
+        ],
+        "title": "CharacterSheet",
+        "type": "object"
+      },
+      "DerivedRound": {
+        "description": "The round a character makes: attack entries plus Sneak Attack, in\nexactly the shape /api/calculate and builds take.",
+        "properties": {
+          "attacks": {
+            "items": {
+              "$ref": "#/components/schemas/AttackEntry"
+            },
+            "title": "Attacks",
+            "type": "array"
+          },
+          "once_per_turn": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OncePerTurn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "attacks",
+          "once_per_turn"
+        ],
+        "title": "DerivedRound",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -585,6 +803,116 @@
         "title": "OncePerTurnResult",
         "type": "object"
       },
+      "RoundToggles": {
+        "description": "Situational choices for one round -- set when calculating, not\nstored on the character.",
+        "properties": {
+          "advantage": {
+            "default": false,
+            "title": "Advantage",
+            "type": "boolean"
+          },
+          "disadvantage": {
+            "default": false,
+            "title": "Disadvantage",
+            "type": "boolean"
+          },
+          "power_attack": {
+            "default": false,
+            "title": "Power Attack",
+            "type": "boolean"
+          }
+        },
+        "title": "RoundToggles",
+        "type": "object"
+      },
+      "SrdWeapon": {
+        "description": "A weapon from the 2014 SRD weapons table (see app/srd.py).",
+        "properties": {
+          "category": {
+            "enum": [
+              "simple",
+              "martial"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "die_sides": {
+            "maximum": 20.0,
+            "minimum": 2.0,
+            "title": "Die Sides",
+            "type": "integer"
+          },
+          "finesse": {
+            "default": false,
+            "title": "Finesse",
+            "type": "boolean"
+          },
+          "heavy": {
+            "default": false,
+            "title": "Heavy",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "light": {
+            "default": false,
+            "title": "Light",
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "num_dice": {
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Num Dice",
+            "type": "integer"
+          },
+          "ranged": {
+            "default": false,
+            "title": "Ranged",
+            "type": "boolean"
+          },
+          "two_handed": {
+            "default": false,
+            "title": "Two Handed",
+            "type": "boolean"
+          },
+          "versatile_die_sides": {
+            "anyOf": [
+              {
+                "maximum": 20.0,
+                "minimum": 2.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Versatile Die Sides"
+          }
+        },
+        "required": [
+          "name",
+          "num_dice",
+          "die_sides",
+          "versatile_die_sides",
+          "finesse",
+          "light",
+          "heavy",
+          "two_handed",
+          "ranged",
+          "key",
+          "category"
+        ],
+        "title": "SrdWeapon",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -616,6 +944,114 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "WeaponChoice": {
+        "description": "A wielded weapon: either an SRD weapon by key or a custom profile.",
+        "properties": {
+          "custom": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeaponProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "magic_bonus": {
+            "default": 0,
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Magic Bonus",
+            "type": "integer"
+          },
+          "proficient": {
+            "default": true,
+            "title": "Proficient",
+            "type": "boolean"
+          },
+          "srd_weapon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Srd Weapon"
+          }
+        },
+        "title": "WeaponChoice",
+        "type": "object"
+      },
+      "WeaponProfile": {
+        "description": "A weapon's damage and properties -- an SRD weapon, or a custom one.",
+        "properties": {
+          "die_sides": {
+            "maximum": 20.0,
+            "minimum": 2.0,
+            "title": "Die Sides",
+            "type": "integer"
+          },
+          "finesse": {
+            "default": false,
+            "title": "Finesse",
+            "type": "boolean"
+          },
+          "heavy": {
+            "default": false,
+            "title": "Heavy",
+            "type": "boolean"
+          },
+          "light": {
+            "default": false,
+            "title": "Light",
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "num_dice": {
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Num Dice",
+            "type": "integer"
+          },
+          "ranged": {
+            "default": false,
+            "title": "Ranged",
+            "type": "boolean"
+          },
+          "two_handed": {
+            "default": false,
+            "title": "Two Handed",
+            "type": "boolean"
+          },
+          "versatile_die_sides": {
+            "anyOf": [
+              {
+                "maximum": 20.0,
+                "minimum": 2.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Versatile Die Sides"
+          }
+        },
+        "required": [
+          "name",
+          "num_dice",
+          "die_sides"
+        ],
+        "title": "WeaponProfile",
         "type": "object"
       }
     }
@@ -942,6 +1378,116 @@
           }
         },
         "summary": "Calculate"
+      }
+    },
+    "/api/characters/calculate": {
+      "post": {
+        "description": "Derive a character's round and run it against a list of ACs -- the\nsame numbers /api/calculate gives for the derived attacks.",
+        "operationId": "calculate_character_api_characters_calculate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CharacterCalculateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterCalculateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Calculate Character",
+        "tags": [
+          "characters"
+        ]
+      }
+    },
+    "/api/characters/derive": {
+      "post": {
+        "description": "The attack entries (and Sneak Attack) a character makes in a round.",
+        "operationId": "derive_character_api_characters_derive_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CharacterDeriveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DerivedRound"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Derive Character",
+        "tags": [
+          "characters"
+        ]
+      }
+    },
+    "/api/srd/weapons": {
+      "get": {
+        "description": "The 2014 SRD weapons table (SRD 5.1, CC-BY-4.0 -- see app/srd.py).",
+        "operationId": "list_srd_weapons_api_srd_weapons_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SrdWeapon"
+                  },
+                  "title": "Response List Srd Weapons Api Srd Weapons Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Srd Weapons",
+        "tags": [
+          "characters"
+        ]
       }
     },
     "/health": {

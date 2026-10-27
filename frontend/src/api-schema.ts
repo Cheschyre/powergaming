@@ -97,6 +97,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/characters/calculate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Calculate Character
+         * @description Derive a character's round and run it against a list of ACs -- the
+         *     same numbers /api/calculate gives for the derived attacks.
+         */
+        post: operations["calculate_character_api_characters_calculate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/characters/derive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Derive Character
+         * @description The attack entries (and Sneak Attack) a character makes in a round.
+         */
+        post: operations["derive_character_api_characters_derive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/srd/weapons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Srd Weapons
+         * @description The 2014 SRD weapons table (SRD 5.1, CC-BY-4.0 -- see app/srd.py).
+         */
+        get: operations["list_srd_weapons_api_srd_weapons_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -361,6 +422,104 @@ export interface components {
             /** Results */
             results: components["schemas"]["ACResult"][];
         };
+        /** CharacterCalculateRequest */
+        CharacterCalculateRequest: {
+            /** Ac List */
+            ac_list: number[];
+            character: components["schemas"]["CharacterSheet"];
+            /**
+             * @default {
+             *       "advantage": false,
+             *       "disadvantage": false,
+             *       "power_attack": false
+             *     }
+             */
+            toggles: components["schemas"]["RoundToggles"];
+        };
+        /** CharacterCalculateResponse */
+        CharacterCalculateResponse: {
+            /** Attacks */
+            attacks: components["schemas"]["AttackEntry"][];
+            once_per_turn: components["schemas"]["OncePerTurn"] | null;
+            /** Results */
+            results: components["schemas"]["ACResult"][];
+        };
+        /** CharacterDeriveRequest */
+        CharacterDeriveRequest: {
+            character: components["schemas"]["CharacterSheet"];
+            /**
+             * @default {
+             *       "advantage": false,
+             *       "disadvantage": false,
+             *       "power_attack": false
+             *     }
+             */
+            toggles: components["schemas"]["RoundToggles"];
+        };
+        /**
+         * CharacterSheet
+         * @description What the player enters. Everything else (proficiency, attacks per
+         *     round, Sneak Attack dice, crit range) is derived from the level.
+         */
+        CharacterSheet: {
+            /**
+             * Character Class
+             * @enum {string}
+             */
+            character_class: "fighter" | "rogue";
+            /** Dexterity */
+            dexterity: number;
+            /**
+             * Fighting Style
+             * @default none
+             * @enum {string}
+             */
+            fighting_style: "none" | "archery" | "dueling" | "great_weapon_fighting" | "two_weapon_fighting";
+            /** Level */
+            level: number;
+            main_hand: components["schemas"]["WeaponChoice"];
+            /** Name */
+            name: string;
+            off_hand?: components["schemas"]["WeaponChoice"] | null;
+            /**
+             * Other Damage
+             * @default 0
+             */
+            other_damage: number;
+            /**
+             * Other To Hit
+             * @default 0
+             */
+            other_to_hit: number;
+            /**
+             * Sneak Attack Can Trigger
+             * @default true
+             */
+            sneak_attack_can_trigger: boolean;
+            /** Strength */
+            strength: number;
+            /**
+             * Subclass
+             * @default none
+             * @enum {string}
+             */
+            subclass: "none" | "champion";
+            /**
+             * Two Handed Grip
+             * @default false
+             */
+            two_handed_grip: boolean;
+        };
+        /**
+         * DerivedRound
+         * @description The round a character makes: attack entries plus Sneak Attack, in
+         *     exactly the shape /api/calculate and builds take.
+         */
+        DerivedRound: {
+            /** Attacks */
+            attacks: components["schemas"]["AttackEntry"][];
+            once_per_turn: components["schemas"]["OncePerTurn"] | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -398,6 +557,74 @@ export interface components {
             /** Had */
             had: number;
         };
+        /**
+         * RoundToggles
+         * @description Situational choices for one round -- set when calculating, not
+         *     stored on the character.
+         */
+        RoundToggles: {
+            /**
+             * Advantage
+             * @default false
+             */
+            advantage: boolean;
+            /**
+             * Disadvantage
+             * @default false
+             */
+            disadvantage: boolean;
+            /**
+             * Power Attack
+             * @default false
+             */
+            power_attack: boolean;
+        };
+        /**
+         * SrdWeapon
+         * @description A weapon from the 2014 SRD weapons table (see app/srd.py).
+         */
+        SrdWeapon: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "simple" | "martial";
+            /** Die Sides */
+            die_sides: number;
+            /**
+             * Finesse
+             * @default false
+             */
+            finesse: boolean;
+            /**
+             * Heavy
+             * @default false
+             */
+            heavy: boolean;
+            /** Key */
+            key: string;
+            /**
+             * Light
+             * @default false
+             */
+            light: boolean;
+            /** Name */
+            name: string;
+            /** Num Dice */
+            num_dice: number;
+            /**
+             * Ranged
+             * @default false
+             */
+            ranged: boolean;
+            /**
+             * Two Handed
+             * @default false
+             */
+            two_handed: boolean;
+            /** Versatile Die Sides */
+            versatile_die_sides: number | null;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -406,6 +633,64 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /**
+         * WeaponChoice
+         * @description A wielded weapon: either an SRD weapon by key or a custom profile.
+         */
+        WeaponChoice: {
+            custom?: components["schemas"]["WeaponProfile"] | null;
+            /**
+             * Magic Bonus
+             * @default 0
+             */
+            magic_bonus: number;
+            /**
+             * Proficient
+             * @default true
+             */
+            proficient: boolean;
+            /** Srd Weapon */
+            srd_weapon?: string | null;
+        };
+        /**
+         * WeaponProfile
+         * @description A weapon's damage and properties -- an SRD weapon, or a custom one.
+         */
+        WeaponProfile: {
+            /** Die Sides */
+            die_sides: number;
+            /**
+             * Finesse
+             * @default false
+             */
+            finesse: boolean;
+            /**
+             * Heavy
+             * @default false
+             */
+            heavy: boolean;
+            /**
+             * Light
+             * @default false
+             */
+            light: boolean;
+            /** Name */
+            name: string;
+            /** Num Dice */
+            num_dice: number;
+            /**
+             * Ranged
+             * @default false
+             */
+            ranged: boolean;
+            /**
+             * Two Handed
+             * @default false
+             */
+            two_handed: boolean;
+            /** Versatile Die Sides */
+            versatile_die_sides?: number | null;
         };
     };
     responses: never;
@@ -661,6 +946,92 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    calculate_character_api_characters_calculate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CharacterCalculateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CharacterCalculateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    derive_character_api_characters_derive_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CharacterDeriveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DerivedRound"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_srd_weapons_api_srd_weapons_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SrdWeapon"][];
                 };
             };
         };

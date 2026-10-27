@@ -1,6 +1,7 @@
 """Pydantic request/response models for the API."""
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -227,3 +228,158 @@ class BuildCalculateRequest(BaseModel):
     ac_list: list[int] = Field(..., min_length=1, max_length=30)
 
     _ac_in_range = field_validator("ac_list")(_check_ac_list)
+
+
+# ---------------------------------------------------------------------------
+# Character sheet (roadmap step 13, first slice: 2014 rules, Fighter/Rogue)
+# ---------------------------------------------------------------------------
+#
+# A character is entered as ability scores, level and weapons; the server
+# derives the round's attack entries from it (app/character.py) and runs
+# them through the same engine as everything else.
+
+CharacterClass = Literal["fighter", "rogue"]
+FightingStyle = Literal[
+    "none", "archery", "dueling", "great_weapon_fighting", "two_weapon_fighting"
+]
+Subclass = Literal["none", "champion"]
+
+
+class WeaponProfile(BaseModel):
+    """A weapon's damage and properties -- an SRD weapon, or a custom one."""
+
+    name: str = Field(..., min_length=1, max_length=50)
+    num_dice: int = Field(..., ge=1, le=10)
+    die_sides: int = Field(..., ge=2, le=20)
+    # Die size when wielded in two hands (versatile weapons only).
+    versatile_die_sides: int | None = Field(None, ge=2, le=20)
+    finesse: bool = False
+    light: bool = False
+    heavy: bool = False
+    two_handed: bool = False
+    # A ranged weapon (bows, crossbows, darts, slings). Thrown melee
+    # weapons count as melee in this slice.
+    ranged: bool = False
+
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+
+class SrdWeapon(WeaponProfile):
+    """A weapon from the 2014 SRD weapons table (see app/srd.py)."""
+
+    key: str
+    category: Literal["simple", "martial"]
+
+
+class WeaponChoice(BaseModel):
+    """A wielded weapon: either an SRD weapon by key or a custom profile."""
+
+    srd_weapon: str | None = None
+    custom: WeaponProfile | None = None
+    # +N magic weapon: added to attack and damage rolls.
+    magic_bonus: int = Field(0, ge=0, le=3)
+    proficient: bool = True
+
+    @model_validator(mode="after")
+    def exactly_one_weapon(self) -> "WeaponChoice":
+        from app.srd import SRD_WEAPONS  # app.srd imports this module
+
+        if (self.srd_weapon is None) == (self.custom is None):
+            raise ValueError("Choose an SRD weapon or enter a custom one (not both).")
+        if self.srd_weapon is not None and self.srd_weapon not in SRD_WEAPONS:
+            raise ValueError(f"Unknown SRD weapon: {self.srd_weapon!r}.")
+        return self
+
+    @property
+    def profile(self) -> WeaponProfile:
+        from app.srd import SRD_WEAPONS
+
+        if self.custom is not None:
+            return self.custom
+        return SRD_WEAPONS[self.srd_weapon]
+
+
+class CharacterSheet(BaseModel):
+    """What the player enters. Everything else (proficiency, attacks per
+    round, Sneak Attack dice, crit range) is derived from the level."""
+
+    name: str = Field(..., min_length=1, max_length=100)
+    character_class: CharacterClass
+    level: int = Field(..., ge=1, le=20)
+    strength: int = Field(..., ge=1, le=30)
+    dexterity: int = Field(..., ge=1, le=30)
+    main_hand: WeaponChoice
+    off_hand: WeaponChoice | None = None
+    # Wield a versatile main-hand weapon in two hands (its bigger die).
+    two_handed_grip: bool = False
+    # Fighter only.
+    fighting_style: FightingStyle = "none"
+    subclass: Subclass = "none"
+    # Rogue only: stands in for "advantage, or an ally next to the target".
+    sneak_attack_can_trigger: bool = True
+    # Catch-alls for anything not modeled yet (applied to every attack).
+    other_to_hit: int = Field(0, ge=-20, le=20)
+    other_damage: int = Field(0, ge=-20, le=20)
+
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+    @model_validator(mode="after")
+    def rules_fit_together(self) -> "CharacterSheet":
+        main = self.main_hand.profile
+        if self.character_class != "fighter":
+            if self.fighting_style != "none":
+                raise ValueError("Only Fighters choose a fighting style in this version.")
+            if self.subclass != "none":
+                raise ValueError("Only Fighters have a subclass option in this version.")
+        if self.two_handed_grip:
+            if main.versatile_die_sides is None:
+                raise ValueError(f"{main.name} isn't versatile -- it can't change grip.")
+            if self.off_hand is not None:
+                raise ValueError("A two-handed grip leaves no hand for an off-hand weapon.")
+        if self.off_hand is not None:
+            off = self.off_hand.profile
+            if main.two_handed:
+                raise ValueError(f"{main.name} needs both hands -- drop the off-hand weapon.")
+            # 2014 two-weapon fighting: both weapons light melee weapons.
+            for weapon in (main, off):
+                if not weapon.light or weapon.ranged:
+                    raise ValueError(
+                        "Two-weapon fighting needs a light melee weapon in each hand "
+                        f"({weapon.name} isn't one)."
+                    )
+        return self
+
+
+class RoundToggles(BaseModel):
+    """Situational choices for one round -- set when calculating, not
+    stored on the character."""
+
+    advantage: bool = False
+    disadvantage: bool = False
+    # -5 to hit / +10 damage, on heavy melee or ranged weapon attacks only.
+    power_attack: bool = False
+
+
+class CharacterDeriveRequest(BaseModel):
+    character: CharacterSheet
+    toggles: RoundToggles = RoundToggles()
+
+
+class DerivedRound(BaseModel):
+    """The round a character makes: attack entries plus Sneak Attack, in
+    exactly the shape /api/calculate and builds take."""
+
+    attacks: list[AttackEntry]
+    once_per_turn: OncePerTurn | None
+
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+
+class CharacterCalculateRequest(CharacterDeriveRequest):
+    ac_list: list[int] = Field(..., min_length=1, max_length=30)
+
+    _ac_in_range = field_validator("ac_list")(_check_ac_list)
+
+
+class CharacterCalculateResponse(DerivedRound):
+    results: list[ACResult]
