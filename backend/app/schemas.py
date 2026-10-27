@@ -261,14 +261,17 @@ class WeaponProfile(BaseModel):
     # weapons count as melee in this slice.
     ranged: bool = False
 
-    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
-
 
 class SrdWeapon(WeaponProfile):
     """A weapon from the 2014 SRD weapons table (see app/srd.py)."""
 
     key: str
     category: Literal["simple", "martial"]
+
+    # Response-only, so every field is always returned. Not on
+    # WeaponProfile: that's also a request body, and the setting would
+    # split its generated types into separate Input/Output versions.
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
 
 
 class WeaponChoice(BaseModel):

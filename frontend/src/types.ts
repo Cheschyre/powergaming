@@ -28,3 +28,13 @@ export type Build = Schemas["BuildRead"];
 export type BuildCreate = Schemas["BuildCreate"];
 export type BuildUpdate = Schemas["BuildUpdate"];
 export type BuildCalculateRequest = Schemas["BuildCalculateRequest"];
+
+export type SrdWeapon = Schemas["SrdWeapon"];
+export type WeaponProfile = Schemas["WeaponProfile"];
+export type WeaponChoice = Schemas["WeaponChoice"];
+export type CharacterSheet = Schemas["CharacterSheet"];
+export type Character = Schemas["CharacterRead"];
+export type CharacterClass = CharacterSheet["character_class"];
+export type FightingStyle = CharacterSheet["fighting_style"];
+export type RoundToggles = Schemas["RoundToggles"];
+export type CharacterCalculateResponse = Schemas["CharacterCalculateResponse"];

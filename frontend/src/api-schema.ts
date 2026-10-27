@@ -563,10 +563,10 @@ export interface components {
             id: number;
             /** Level */
             level: number;
-            main_hand: components["schemas"]["WeaponChoice-Output"];
+            main_hand: components["schemas"]["WeaponChoice"];
             /** Name */
             name: string;
-            off_hand: components["schemas"]["WeaponChoice-Output"] | null;
+            off_hand: components["schemas"]["WeaponChoice"] | null;
             /**
              * Other Damage
              * @default 0
@@ -638,10 +638,10 @@ export interface components {
             fighting_style: "none" | "archery" | "dueling" | "great_weapon_fighting" | "two_weapon_fighting";
             /** Level */
             level: number;
-            main_hand: components["schemas"]["WeaponChoice-Input"];
+            main_hand: components["schemas"]["WeaponChoice"];
             /** Name */
             name: string;
-            off_hand?: components["schemas"]["WeaponChoice-Input"] | null;
+            off_hand?: components["schemas"]["WeaponChoice"] | null;
             /**
              * Other Damage
              * @default 0
@@ -816,27 +816,8 @@ export interface components {
          * WeaponChoice
          * @description A wielded weapon: either an SRD weapon by key or a custom profile.
          */
-        "WeaponChoice-Input": {
-            custom?: components["schemas"]["WeaponProfile-Input"] | null;
-            /**
-             * Magic Bonus
-             * @default 0
-             */
-            magic_bonus: number;
-            /**
-             * Proficient
-             * @default true
-             */
-            proficient: boolean;
-            /** Srd Weapon */
-            srd_weapon?: string | null;
-        };
-        /**
-         * WeaponChoice
-         * @description A wielded weapon: either an SRD weapon by key or a custom profile.
-         */
-        "WeaponChoice-Output": {
-            custom?: components["schemas"]["WeaponProfile-Output"] | null;
+        WeaponChoice: {
+            custom?: components["schemas"]["WeaponProfile"] | null;
             /**
              * Magic Bonus
              * @default 0
@@ -854,7 +835,7 @@ export interface components {
          * WeaponProfile
          * @description A weapon's damage and properties -- an SRD weapon, or a custom one.
          */
-        "WeaponProfile-Input": {
+        WeaponProfile: {
             /** Die Sides */
             die_sides: number;
             /**
@@ -888,45 +869,6 @@ export interface components {
             two_handed: boolean;
             /** Versatile Die Sides */
             versatile_die_sides?: number | null;
-        };
-        /**
-         * WeaponProfile
-         * @description A weapon's damage and properties -- an SRD weapon, or a custom one.
-         */
-        "WeaponProfile-Output": {
-            /** Die Sides */
-            die_sides: number;
-            /**
-             * Finesse
-             * @default false
-             */
-            finesse: boolean;
-            /**
-             * Heavy
-             * @default false
-             */
-            heavy: boolean;
-            /**
-             * Light
-             * @default false
-             */
-            light: boolean;
-            /** Name */
-            name: string;
-            /** Num Dice */
-            num_dice: number;
-            /**
-             * Ranged
-             * @default false
-             */
-            ranged: boolean;
-            /**
-             * Two Handed
-             * @default false
-             */
-            two_handed: boolean;
-            /** Versatile Die Sides */
-            versatile_die_sides: number | null;
         };
     };
     responses: never;

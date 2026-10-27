@@ -8,12 +8,38 @@ import type {
   BreakevenResponse,
   Build,
   BuildCreate,
+  Character,
+  CharacterCalculateResponse,
+  CharacterSheet,
+  RoundToggles,
+  SrdWeapon,
   BuildUpdate,
   CalculateRequest,
   CalculateResponse,
 } from "./types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+
+interface ValidationIssue {
+  loc?: (string | number)[];
+  msg?: string;
+}
+
+/**
+ * FastAPI's 422 detail list -> "level: Input should be less than or equal
+ * to 20; Two-weapon fighting needs ...". Model-level rule messages (whose
+ * location is just the body) read fine on their own.
+ */
+function formatValidationErrors(detail: unknown): string {
+  if (!Array.isArray(detail)) return JSON.stringify(detail);
+  return detail
+    .map((issue: ValidationIssue) => {
+      const msg = (issue.msg ?? "Invalid value").replace(/^Value error, /, "");
+      const where = (issue.loc ?? []).filter((part) => part !== "body").join(".");
+      return where ? `${where}: ${msg}` : msg;
+    })
+    .join("; ");
+}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
@@ -27,7 +53,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     let detail = res.statusText;
     try {
       const body = await res.json();
-      detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
+      detail = typeof body.detail === "string" ? body.detail : formatValidationErrors(body.detail);
     } catch {
       // response wasn't JSON -- keep the statusText fallback
     }
@@ -81,5 +107,53 @@ export function calculateForBuild(id: number, acList: number[]): Promise<Calcula
   return request<CalculateResponse>(`/api/builds/${id}/calculate`, {
     method: "POST",
     body: JSON.stringify({ ac_list: acList }),
+  });
+}
+
+export function listSrdWeapons(): Promise<SrdWeapon[]> {
+  return request<SrdWeapon[]>("/api/srd/weapons");
+}
+
+export function listCharacters(): Promise<Character[]> {
+  return request<Character[]>("/api/characters");
+}
+
+export function createCharacter(sheet: CharacterSheet): Promise<Character> {
+  return request<Character>("/api/characters", {
+    method: "POST",
+    body: JSON.stringify(sheet),
+  });
+}
+
+export function replaceCharacter(id: number, sheet: CharacterSheet): Promise<Character> {
+  return request<Character>(`/api/characters/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(sheet),
+  });
+}
+
+export function deleteCharacter(id: number): Promise<void> {
+  return request<void>(`/api/characters/${id}`, { method: "DELETE" });
+}
+
+export function calculateForCharacter(
+  id: number,
+  acList: number[],
+  toggles: RoundToggles,
+): Promise<CharacterCalculateResponse> {
+  return request<CharacterCalculateResponse>(`/api/characters/${id}/calculate`, {
+    method: "POST",
+    body: JSON.stringify({ ac_list: acList, toggles }),
+  });
+}
+
+export function saveCharacterAsBuild(
+  id: number,
+  toggles: RoundToggles,
+  name?: string,
+): Promise<Build> {
+  return request<Build>(`/api/characters/${id}/save-as-build`, {
+    method: "POST",
+    body: JSON.stringify(name ? { name, toggles } : { toggles }),
   });
 }

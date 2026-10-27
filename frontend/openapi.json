@@ -648,7 +648,7 @@
             "type": "integer"
           },
           "main_hand": {
-            "$ref": "#/components/schemas/WeaponChoice-Output"
+            "$ref": "#/components/schemas/WeaponChoice"
           },
           "name": {
             "maxLength": 100,
@@ -659,7 +659,7 @@
           "off_hand": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/WeaponChoice-Output"
+                "$ref": "#/components/schemas/WeaponChoice"
               },
               {
                 "type": "null"
@@ -795,7 +795,7 @@
             "type": "integer"
           },
           "main_hand": {
-            "$ref": "#/components/schemas/WeaponChoice-Input"
+            "$ref": "#/components/schemas/WeaponChoice"
           },
           "name": {
             "maxLength": 100,
@@ -806,7 +806,7 @@
           "off_hand": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/WeaponChoice-Input"
+                "$ref": "#/components/schemas/WeaponChoice"
               },
               {
                 "type": "null"
@@ -1130,13 +1130,13 @@
         "title": "ValidationError",
         "type": "object"
       },
-      "WeaponChoice-Input": {
+      "WeaponChoice": {
         "description": "A wielded weapon: either an SRD weapon by key or a custom profile.",
         "properties": {
           "custom": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/WeaponProfile-Input"
+                "$ref": "#/components/schemas/WeaponProfile"
               },
               {
                 "type": "null"
@@ -1170,47 +1170,7 @@
         "title": "WeaponChoice",
         "type": "object"
       },
-      "WeaponChoice-Output": {
-        "description": "A wielded weapon: either an SRD weapon by key or a custom profile.",
-        "properties": {
-          "custom": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/WeaponProfile-Output"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "magic_bonus": {
-            "default": 0,
-            "maximum": 3.0,
-            "minimum": 0.0,
-            "title": "Magic Bonus",
-            "type": "integer"
-          },
-          "proficient": {
-            "default": true,
-            "title": "Proficient",
-            "type": "boolean"
-          },
-          "srd_weapon": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Srd Weapon"
-          }
-        },
-        "title": "WeaponChoice",
-        "type": "object"
-      },
-      "WeaponProfile-Input": {
+      "WeaponProfile": {
         "description": "A weapon's damage and properties -- an SRD weapon, or a custom one.",
         "properties": {
           "die_sides": {
@@ -1274,80 +1234,6 @@
           "name",
           "num_dice",
           "die_sides"
-        ],
-        "title": "WeaponProfile",
-        "type": "object"
-      },
-      "WeaponProfile-Output": {
-        "description": "A weapon's damage and properties -- an SRD weapon, or a custom one.",
-        "properties": {
-          "die_sides": {
-            "maximum": 20.0,
-            "minimum": 2.0,
-            "title": "Die Sides",
-            "type": "integer"
-          },
-          "finesse": {
-            "default": false,
-            "title": "Finesse",
-            "type": "boolean"
-          },
-          "heavy": {
-            "default": false,
-            "title": "Heavy",
-            "type": "boolean"
-          },
-          "light": {
-            "default": false,
-            "title": "Light",
-            "type": "boolean"
-          },
-          "name": {
-            "maxLength": 50,
-            "minLength": 1,
-            "title": "Name",
-            "type": "string"
-          },
-          "num_dice": {
-            "maximum": 10.0,
-            "minimum": 1.0,
-            "title": "Num Dice",
-            "type": "integer"
-          },
-          "ranged": {
-            "default": false,
-            "title": "Ranged",
-            "type": "boolean"
-          },
-          "two_handed": {
-            "default": false,
-            "title": "Two Handed",
-            "type": "boolean"
-          },
-          "versatile_die_sides": {
-            "anyOf": [
-              {
-                "maximum": 20.0,
-                "minimum": 2.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Versatile Die Sides"
-          }
-        },
-        "required": [
-          "name",
-          "num_dice",
-          "die_sides",
-          "versatile_die_sides",
-          "finesse",
-          "light",
-          "heavy",
-          "two_handed",
-          "ranged"
         ],
         "title": "WeaponProfile",
         "type": "object"

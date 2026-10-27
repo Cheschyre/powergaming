@@ -2,8 +2,9 @@ import { useState } from "react";
 import BreakevenPanel from "./components/BreakevenPanel";
 import BuildsPanel from "./components/BuildsPanel";
 import CalculatorPanel from "./components/CalculatorPanel";
+import CharactersPanel from "./components/CharactersPanel";
 
-type Tab = "calculator" | "breakeven" | "builds";
+type Tab = "calculator" | "breakeven" | "builds" | "characters";
 
 export default function App() {
   const [tab, setTab] = useState<Tab>("calculator");
@@ -28,6 +29,12 @@ export default function App() {
           <button className={tab === "builds" ? "active" : ""} onClick={() => setTab("builds")}>
             Saved Builds
           </button>
+          <button
+            className={tab === "characters" ? "active" : ""}
+            onClick={() => setTab("characters")}
+          >
+            Characters
+          </button>
         </nav>
       </header>
 
@@ -35,6 +42,7 @@ export default function App() {
         {tab === "calculator" && <CalculatorPanel />}
         {tab === "breakeven" && <BreakevenPanel />}
         {tab === "builds" && <BuildsPanel />}
+        {tab === "characters" && <CharactersPanel />}
       </main>
     </div>
   );
