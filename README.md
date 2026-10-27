@@ -394,27 +394,57 @@ Response shape is identical to `/api/calculate`.
       just another attack entry.
     - No migration: the options live in each attack's JSON and default to
       off for existing builds.
-13. Mini character sheet -- enter a character instead of final numbers:
-    ability scores, character level (proficiency derived: +2 at 1-4 up to
-    +6 at 17-20), weapons, +N magic items, fighting styles, Extra Attack,
-    and a manual "other bonus" for anything not modeled yet. The sheet
-    *derives* the attack entries (bonus, dice, modifier) and runs them
-    through the same engine, so it never does probability math itself and
-    every engine feature (steps 11-12) works for it automatically.
-    - Level/progression view lives here: rebuild the character's attacks
-      at each level (proficiency, ability score increases, Extra Attack
-      at 5) and show hit/crit/HAD and the power-attack breakeven across
-      the range.
-    - Characters get their own table; saved builds stay as the manual,
-      generic option (a character could be saved as a build snapshot to
-      compare).
-    - Rules data: SRD 5.1/5.2 content (e.g. the weapons table) is under
-      Creative Commons and can ship with attribution; anything outside
-      the SRD is user-entered. Needs an edition choice (2014 vs 2024 --
-      e.g. 2024 Great Weapon Master adds proficiency with no -5, and
-      Sharpshooter lost its -5/+10); the generic calculator already
-      handles both via free bonus/penalty numbers.
-    - Start small: the list above, single-class, then grow.
+13. Mini character sheet -- enter a character instead of final numbers.
+    The sheet *derives* attack entries (bonus, dice, modifier, options)
+    on the server and runs them through the same engine, so it never does
+    probability math itself and every engine feature (steps 9-12) works
+    for it automatically.
+
+    **First slice (agreed, 2014 rules):**
+    - Single class: **Fighter** or **Rogue**, level 1-20 (proficiency
+      derived: +2 at 1-4 up to +6 at 17-20).
+    - Inputs: name, class, level, STR and DEX scores, a main-hand weapon
+      and an optional off-hand weapon, "two hands" for versatile weapons,
+      +N magic bonus and a "proficient" checkbox (default on) per weapon,
+      plus manual "other to-hit" / "other damage" bonuses for anything
+      not modeled.
+    - Weapons: the 2014 SRD weapons table (dice and properties: finesse,
+      light, heavy, two-handed, versatile, ranged), plus a custom weapon.
+      Finesse uses the better of STR/DEX; ranged uses DEX.
+    - Fighter: Extra Attack (2 attacks at 5, 3 at 11, 4 at 20); subclass
+      Champion (crit 19-20 from 3, 18-20 from 15) or Other; one fighting
+      style: Archery (+2 to hit, ranged), Dueling (+2 damage, one
+      one-handed melee weapon and no other weapon), Great Weapon Fighting
+      (reroll 1-2s on two-handed/versatile-in-two-hands, step 12), or
+      Two-Weapon Fighting (ability modifier on the off-hand attack).
+    - Rogue: Sneak Attack, ceil(level / 2) d6, on finesse or ranged
+      attacks (step 11), with a "Sneak Attack can trigger" checkbox
+      (default on) standing in for advantage or an adjacent ally.
+    - Two light weapons add the bonus-action off-hand attack as its own
+      row. Per RAW it adds the ability modifier to damage only if that
+      modifier is negative, or with the Two-Weapon Fighting style. For a
+      Rogue it's a second chance at Sneak Attack.
+    - Round toggles, set when calculating rather than stored on the
+      character: advantage, disadvantage, and power attack (-5 to hit /
+      +10 damage on heavy melee or ranged weapons -- an effect toggle,
+      since the feats that grant it aren't in the SRD).
+    - Output: the usual results table plus the derived attack rows, so
+      the numbers can be checked.
+    - Characters get their own table (migration) with save/edit/delete
+      like builds, and "Save as build" to compare a snapshot.
+    - SRD 5.1 attribution (CC-BY-4.0) in the README and the app footer.
+    - Left out on purpose: Action Surge (skews a per-round average),
+      races, multiclassing, other classes and subclass features.
+
+    **Later slices:** the level-by-level view (rebuild the attacks at each
+    level -- proficiency, ability score increases, Extra Attack, Sneak
+    Attack dice -- and show hit/crit/HAD and the power-attack breakeven
+    across 1-20); more classes (Barbarian, Paladin, Ranger, Monk) and
+    features (Action Surge, Rage, smites); races (e.g. Half-Orc Savage
+    Attacks via extra crit dice); a 2024 ruleset option (e.g. 2024 Great
+    Weapon Master adds proficiency with no -5, and Sharpshooter lost its
+    -5/+10) -- the generic calculator already handles both editions via
+    free numbers.
 
 The calculator itself stays generic -- final numbers in, probabilities
 out -- so it remains useful for quick what-ifs, monsters, NPCs and
