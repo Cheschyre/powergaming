@@ -28,3 +28,21 @@ class Build(Base):
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+
+
+class Character(Base):
+    """A saved character sheet (roadmap step 13). The sheet's fields other
+    than the name are one JSON document (schemas.CharacterSheet, validated
+    by Pydantic on the way in and out), so new sheet options need no
+    schema migration -- the same reasoning as Build.attacks."""
+
+    __tablename__ = "characters"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    sheet = Column(JSON, nullable=False)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )

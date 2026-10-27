@@ -97,6 +97,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/characters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Characters */
+        get: operations["list_characters_api_characters_get"];
+        put?: never;
+        /** Create Character */
+        post: operations["create_character_api_characters_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/characters/calculate": {
         parameters: {
             query?: never;
@@ -132,6 +150,68 @@ export interface paths {
          * @description The attack entries (and Sneak Attack) a character makes in a round.
          */
         post: operations["derive_character_api_characters_derive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/characters/{character_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Character */
+        get: operations["get_character_api_characters__character_id__get"];
+        /**
+         * Replace Character
+         * @description Replace the whole sheet -- its rules span fields (e.g. off-hand vs.
+         *     grip), so it's edited and validated as one unit rather than patched.
+         */
+        put: operations["replace_character_api_characters__character_id__put"];
+        post?: never;
+        /** Delete Character */
+        delete: operations["delete_character_api_characters__character_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/characters/{character_id}/calculate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Calculate Saved Character */
+        post: operations["calculate_saved_character_api_characters__character_id__calculate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/characters/{character_id}/save-as-build": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save Character As Build
+         * @description Save the character's derived round (with these toggles) as a build,
+         *     to compare against other builds. A snapshot: later edits to the
+         *     character don't change it.
+         */
+        post: operations["save_character_as_build_api_characters__character_id__save_as_build_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -457,6 +537,87 @@ export interface components {
             toggles: components["schemas"]["RoundToggles"];
         };
         /**
+         * CharacterRead
+         * @description A saved character: the sheet plus its id and timestamps.
+         */
+        CharacterRead: {
+            /**
+             * Character Class
+             * @enum {string}
+             */
+            character_class: "fighter" | "rogue";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Dexterity */
+            dexterity: number;
+            /**
+             * Fighting Style
+             * @default none
+             * @enum {string}
+             */
+            fighting_style: "none" | "archery" | "dueling" | "great_weapon_fighting" | "two_weapon_fighting";
+            /** Id */
+            id: number;
+            /** Level */
+            level: number;
+            main_hand: components["schemas"]["WeaponChoice-Output"];
+            /** Name */
+            name: string;
+            off_hand: components["schemas"]["WeaponChoice-Output"] | null;
+            /**
+             * Other Damage
+             * @default 0
+             */
+            other_damage: number;
+            /**
+             * Other To Hit
+             * @default 0
+             */
+            other_to_hit: number;
+            /**
+             * Sneak Attack Can Trigger
+             * @default true
+             */
+            sneak_attack_can_trigger: boolean;
+            /** Strength */
+            strength: number;
+            /**
+             * Subclass
+             * @default none
+             * @enum {string}
+             */
+            subclass: "none" | "champion";
+            /**
+             * Two Handed Grip
+             * @default false
+             */
+            two_handed_grip: boolean;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * CharacterRunRequest
+         * @description Run a saved character: target ACs plus this round's toggles.
+         */
+        CharacterRunRequest: {
+            /** Ac List */
+            ac_list: number[];
+            /**
+             * @default {
+             *       "advantage": false,
+             *       "disadvantage": false,
+             *       "power_attack": false
+             *     }
+             */
+            toggles: components["schemas"]["RoundToggles"];
+        };
+        /**
          * CharacterSheet
          * @description What the player enters. Everything else (proficiency, attacks per
          *     round, Sneak Attack dice, crit range) is derived from the level.
@@ -477,10 +638,10 @@ export interface components {
             fighting_style: "none" | "archery" | "dueling" | "great_weapon_fighting" | "two_weapon_fighting";
             /** Level */
             level: number;
-            main_hand: components["schemas"]["WeaponChoice"];
+            main_hand: components["schemas"]["WeaponChoice-Input"];
             /** Name */
             name: string;
-            off_hand?: components["schemas"]["WeaponChoice"] | null;
+            off_hand?: components["schemas"]["WeaponChoice-Input"] | null;
             /**
              * Other Damage
              * @default 0
@@ -580,6 +741,23 @@ export interface components {
             power_attack: boolean;
         };
         /**
+         * SaveAsBuildRequest
+         * @description Snapshot a character's derived round as a build. The build doesn't
+         *     follow later changes to the character.
+         */
+        SaveAsBuildRequest: {
+            /** Name */
+            name?: string | null;
+            /**
+             * @default {
+             *       "advantage": false,
+             *       "disadvantage": false,
+             *       "power_attack": false
+             *     }
+             */
+            toggles: components["schemas"]["RoundToggles"];
+        };
+        /**
          * SrdWeapon
          * @description A weapon from the 2014 SRD weapons table (see app/srd.py).
          */
@@ -638,8 +816,27 @@ export interface components {
          * WeaponChoice
          * @description A wielded weapon: either an SRD weapon by key or a custom profile.
          */
-        WeaponChoice: {
-            custom?: components["schemas"]["WeaponProfile"] | null;
+        "WeaponChoice-Input": {
+            custom?: components["schemas"]["WeaponProfile-Input"] | null;
+            /**
+             * Magic Bonus
+             * @default 0
+             */
+            magic_bonus: number;
+            /**
+             * Proficient
+             * @default true
+             */
+            proficient: boolean;
+            /** Srd Weapon */
+            srd_weapon?: string | null;
+        };
+        /**
+         * WeaponChoice
+         * @description A wielded weapon: either an SRD weapon by key or a custom profile.
+         */
+        "WeaponChoice-Output": {
+            custom?: components["schemas"]["WeaponProfile-Output"] | null;
             /**
              * Magic Bonus
              * @default 0
@@ -657,7 +854,7 @@ export interface components {
          * WeaponProfile
          * @description A weapon's damage and properties -- an SRD weapon, or a custom one.
          */
-        WeaponProfile: {
+        "WeaponProfile-Input": {
             /** Die Sides */
             die_sides: number;
             /**
@@ -691,6 +888,45 @@ export interface components {
             two_handed: boolean;
             /** Versatile Die Sides */
             versatile_die_sides?: number | null;
+        };
+        /**
+         * WeaponProfile
+         * @description A weapon's damage and properties -- an SRD weapon, or a custom one.
+         */
+        "WeaponProfile-Output": {
+            /** Die Sides */
+            die_sides: number;
+            /**
+             * Finesse
+             * @default false
+             */
+            finesse: boolean;
+            /**
+             * Heavy
+             * @default false
+             */
+            heavy: boolean;
+            /**
+             * Light
+             * @default false
+             */
+            light: boolean;
+            /** Name */
+            name: string;
+            /** Num Dice */
+            num_dice: number;
+            /**
+             * Ranged
+             * @default false
+             */
+            ranged: boolean;
+            /**
+             * Two Handed
+             * @default false
+             */
+            two_handed: boolean;
+            /** Versatile Die Sides */
+            versatile_die_sides: number | null;
         };
     };
     responses: never;
@@ -950,6 +1186,59 @@ export interface operations {
             };
         };
     };
+    list_characters_api_characters_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CharacterRead"][];
+                };
+            };
+        };
+    };
+    create_character_api_characters_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CharacterSheet"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CharacterRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     calculate_character_api_characters_calculate_post: {
         parameters: {
             query?: never;
@@ -1003,6 +1292,171 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DerivedRound"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_character_api_characters__character_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                character_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CharacterRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    replace_character_api_characters__character_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                character_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CharacterSheet"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CharacterRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_character_api_characters__character_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                character_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    calculate_saved_character_api_characters__character_id__calculate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                character_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CharacterRunRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CharacterCalculateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_character_as_build_api_characters__character_id__save_as_build_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                character_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveAsBuildRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuildRead"];
                 };
             };
             /** @description Validation Error */

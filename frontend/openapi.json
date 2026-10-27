@@ -603,6 +603,162 @@
         "title": "CharacterDeriveRequest",
         "type": "object"
       },
+      "CharacterRead": {
+        "description": "A saved character: the sheet plus its id and timestamps.",
+        "properties": {
+          "character_class": {
+            "enum": [
+              "fighter",
+              "rogue"
+            ],
+            "title": "Character Class",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "dexterity": {
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Dexterity",
+            "type": "integer"
+          },
+          "fighting_style": {
+            "default": "none",
+            "enum": [
+              "none",
+              "archery",
+              "dueling",
+              "great_weapon_fighting",
+              "two_weapon_fighting"
+            ],
+            "title": "Fighting Style",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "level": {
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Level",
+            "type": "integer"
+          },
+          "main_hand": {
+            "$ref": "#/components/schemas/WeaponChoice-Output"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "off_hand": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeaponChoice-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "other_damage": {
+            "default": 0,
+            "maximum": 20.0,
+            "minimum": -20.0,
+            "title": "Other Damage",
+            "type": "integer"
+          },
+          "other_to_hit": {
+            "default": 0,
+            "maximum": 20.0,
+            "minimum": -20.0,
+            "title": "Other To Hit",
+            "type": "integer"
+          },
+          "sneak_attack_can_trigger": {
+            "default": true,
+            "title": "Sneak Attack Can Trigger",
+            "type": "boolean"
+          },
+          "strength": {
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Strength",
+            "type": "integer"
+          },
+          "subclass": {
+            "default": "none",
+            "enum": [
+              "none",
+              "champion"
+            ],
+            "title": "Subclass",
+            "type": "string"
+          },
+          "two_handed_grip": {
+            "default": false,
+            "title": "Two Handed Grip",
+            "type": "boolean"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "character_class",
+          "level",
+          "strength",
+          "dexterity",
+          "main_hand",
+          "off_hand",
+          "two_handed_grip",
+          "fighting_style",
+          "subclass",
+          "sneak_attack_can_trigger",
+          "other_to_hit",
+          "other_damage",
+          "id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "CharacterRead",
+        "type": "object"
+      },
+      "CharacterRunRequest": {
+        "description": "Run a saved character: target ACs plus this round's toggles.",
+        "properties": {
+          "ac_list": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 30,
+            "minItems": 1,
+            "title": "Ac List",
+            "type": "array"
+          },
+          "toggles": {
+            "$ref": "#/components/schemas/RoundToggles",
+            "default": {
+              "advantage": false,
+              "disadvantage": false,
+              "power_attack": false
+            }
+          }
+        },
+        "required": [
+          "ac_list"
+        ],
+        "title": "CharacterRunRequest",
+        "type": "object"
+      },
       "CharacterSheet": {
         "description": "What the player enters. Everything else (proficiency, attacks per\nround, Sneak Attack dice, crit range) is derived from the level.",
         "properties": {
@@ -639,7 +795,7 @@
             "type": "integer"
           },
           "main_hand": {
-            "$ref": "#/components/schemas/WeaponChoice"
+            "$ref": "#/components/schemas/WeaponChoice-Input"
           },
           "name": {
             "maxLength": 100,
@@ -650,7 +806,7 @@
           "off_hand": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/WeaponChoice"
+                "$ref": "#/components/schemas/WeaponChoice-Input"
               },
               {
                 "type": "null"
@@ -825,6 +981,34 @@
         "title": "RoundToggles",
         "type": "object"
       },
+      "SaveAsBuildRequest": {
+        "description": "Snapshot a character's derived round as a build. The build doesn't\nfollow later changes to the character.",
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "toggles": {
+            "$ref": "#/components/schemas/RoundToggles",
+            "default": {
+              "advantage": false,
+              "disadvantage": false,
+              "power_attack": false
+            }
+          }
+        },
+        "title": "SaveAsBuildRequest",
+        "type": "object"
+      },
       "SrdWeapon": {
         "description": "A weapon from the 2014 SRD weapons table (see app/srd.py).",
         "properties": {
@@ -946,13 +1130,13 @@
         "title": "ValidationError",
         "type": "object"
       },
-      "WeaponChoice": {
+      "WeaponChoice-Input": {
         "description": "A wielded weapon: either an SRD weapon by key or a custom profile.",
         "properties": {
           "custom": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/WeaponProfile"
+                "$ref": "#/components/schemas/WeaponProfile-Input"
               },
               {
                 "type": "null"
@@ -986,7 +1170,47 @@
         "title": "WeaponChoice",
         "type": "object"
       },
-      "WeaponProfile": {
+      "WeaponChoice-Output": {
+        "description": "A wielded weapon: either an SRD weapon by key or a custom profile.",
+        "properties": {
+          "custom": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeaponProfile-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "magic_bonus": {
+            "default": 0,
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Magic Bonus",
+            "type": "integer"
+          },
+          "proficient": {
+            "default": true,
+            "title": "Proficient",
+            "type": "boolean"
+          },
+          "srd_weapon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Srd Weapon"
+          }
+        },
+        "title": "WeaponChoice",
+        "type": "object"
+      },
+      "WeaponProfile-Input": {
         "description": "A weapon's damage and properties -- an SRD weapon, or a custom one.",
         "properties": {
           "die_sides": {
@@ -1050,6 +1274,80 @@
           "name",
           "num_dice",
           "die_sides"
+        ],
+        "title": "WeaponProfile",
+        "type": "object"
+      },
+      "WeaponProfile-Output": {
+        "description": "A weapon's damage and properties -- an SRD weapon, or a custom one.",
+        "properties": {
+          "die_sides": {
+            "maximum": 20.0,
+            "minimum": 2.0,
+            "title": "Die Sides",
+            "type": "integer"
+          },
+          "finesse": {
+            "default": false,
+            "title": "Finesse",
+            "type": "boolean"
+          },
+          "heavy": {
+            "default": false,
+            "title": "Heavy",
+            "type": "boolean"
+          },
+          "light": {
+            "default": false,
+            "title": "Light",
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "num_dice": {
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Num Dice",
+            "type": "integer"
+          },
+          "ranged": {
+            "default": false,
+            "title": "Ranged",
+            "type": "boolean"
+          },
+          "two_handed": {
+            "default": false,
+            "title": "Two Handed",
+            "type": "boolean"
+          },
+          "versatile_die_sides": {
+            "anyOf": [
+              {
+                "maximum": 20.0,
+                "minimum": 2.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Versatile Die Sides"
+          }
+        },
+        "required": [
+          "name",
+          "num_dice",
+          "die_sides",
+          "versatile_die_sides",
+          "finesse",
+          "light",
+          "heavy",
+          "two_handed",
+          "ranged"
         ],
         "title": "WeaponProfile",
         "type": "object"
@@ -1380,6 +1678,70 @@
         "summary": "Calculate"
       }
     },
+    "/api/characters": {
+      "get": {
+        "operationId": "list_characters_api_characters_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CharacterRead"
+                  },
+                  "title": "Response List Characters Api Characters Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Characters",
+        "tags": [
+          "characters"
+        ]
+      },
+      "post": {
+        "operationId": "create_character_api_characters_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CharacterSheet"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Character",
+        "tags": [
+          "characters"
+        ]
+      }
+    },
     "/api/characters/calculate": {
       "post": {
         "description": "Derive a character's round and run it against a list of ACs -- the\nsame numbers /api/calculate gives for the derived attacks.",
@@ -1459,6 +1821,237 @@
           }
         },
         "summary": "Derive Character",
+        "tags": [
+          "characters"
+        ]
+      }
+    },
+    "/api/characters/{character_id}": {
+      "delete": {
+        "operationId": "delete_character_api_characters__character_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "character_id",
+            "required": true,
+            "schema": {
+              "title": "Character Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Character",
+        "tags": [
+          "characters"
+        ]
+      },
+      "get": {
+        "operationId": "get_character_api_characters__character_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "character_id",
+            "required": true,
+            "schema": {
+              "title": "Character Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Character",
+        "tags": [
+          "characters"
+        ]
+      },
+      "put": {
+        "description": "Replace the whole sheet -- its rules span fields (e.g. off-hand vs.\ngrip), so it's edited and validated as one unit rather than patched.",
+        "operationId": "replace_character_api_characters__character_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "character_id",
+            "required": true,
+            "schema": {
+              "title": "Character Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CharacterSheet"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Replace Character",
+        "tags": [
+          "characters"
+        ]
+      }
+    },
+    "/api/characters/{character_id}/calculate": {
+      "post": {
+        "operationId": "calculate_saved_character_api_characters__character_id__calculate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "character_id",
+            "required": true,
+            "schema": {
+              "title": "Character Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CharacterRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterCalculateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Calculate Saved Character",
+        "tags": [
+          "characters"
+        ]
+      }
+    },
+    "/api/characters/{character_id}/save-as-build": {
+      "post": {
+        "description": "Save the character's derived round (with these toggles) as a build,\nto compare against other builds. A snapshot: later edits to the\ncharacter don't change it.",
+        "operationId": "save_character_as_build_api_characters__character_id__save_as_build_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "character_id",
+            "required": true,
+            "schema": {
+              "title": "Character Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveAsBuildRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Character As Build",
         "tags": [
           "characters"
         ]

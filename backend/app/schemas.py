@@ -383,3 +383,28 @@ class CharacterCalculateRequest(CharacterDeriveRequest):
 
 class CharacterCalculateResponse(DerivedRound):
     results: list[ACResult]
+
+
+class CharacterRead(CharacterSheet):
+    """A saved character: the sheet plus its id and timestamps."""
+
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class CharacterRunRequest(BaseModel):
+    """Run a saved character: target ACs plus this round's toggles."""
+
+    ac_list: list[int] = Field(..., min_length=1, max_length=30)
+    toggles: RoundToggles = RoundToggles()
+
+    _ac_in_range = field_validator("ac_list")(_check_ac_list)
+
+
+class SaveAsBuildRequest(BaseModel):
+    """Snapshot a character's derived round as a build. The build doesn't
+    follow later changes to the character."""
+
+    name: str | None = Field(None, min_length=1, max_length=100)
+    toggles: RoundToggles = RoundToggles()

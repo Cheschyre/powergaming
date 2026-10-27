@@ -156,3 +156,17 @@ def test_0003_downgrade_drops_once_per_turn(db_url):
     engine.dispose()
     assert "once_per_turn" not in columns
     assert "attacks" in columns
+
+
+def test_0004_creates_and_drops_the_characters_table(db_url):
+    _alembic("upgrade", "head")
+    engine = sa.create_engine(db_url)
+    assert "characters" in sa.inspect(engine).get_table_names()
+    engine.dispose()
+
+    _alembic("downgrade", "0003")
+    engine = sa.create_engine(db_url)
+    tables = sa.inspect(engine).get_table_names()
+    engine.dispose()
+    assert "characters" not in tables
+    assert "builds" in tables
