@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import * as api from "./api";
+import { newCharacter } from "./characters";
 import { greatsword } from "./test/fixtures";
 
 function mockFetch(response: Response) {
@@ -59,10 +60,36 @@ describe("api", () => {
     await expect(api.listBuilds()).rejects.toThrow("404: Build not found");
   });
 
-  it("serializes structured validation errors", async () => {
-    const detail = [{ loc: ["body", "ac_list"], msg: "Each AC must be between 1 and 30." }];
+  it("turns structured validation errors into readable text", async () => {
+    const detail = [
+      { loc: ["body", "character", "level"], msg: "Input should be less than or equal to 20" },
+      { loc: ["body"], msg: "Value error, Two-weapon fighting needs a light melee weapon." },
+    ];
     mockFetch(json({ detail }, 422));
-    await expect(api.listBuilds()).rejects.toThrow(`422: ${JSON.stringify(detail)}`);
+    await expect(api.listBuilds()).rejects.toThrow(
+      "422: character.level: Input should be less than or equal to 20; " +
+        "Two-weapon fighting needs a light melee weapon.",
+    );
+  });
+
+  it("PUTs a whole character sheet and posts toggles to run or save one", async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => json({}));
+    vi.stubGlobal("fetch", fetchMock);
+    const toggles = { advantage: true, disadvantage: false, power_attack: false };
+
+    await api.calculateForCharacter(7, [15], toggles);
+    expect(fetchMock.mock.calls[0][0]).toBe("http://api.test/api/characters/7/calculate");
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ ac_list: [15], toggles });
+
+    await api.saveCharacterAsBuild(7, toggles);
+    expect(fetchMock.mock.calls[1][0]).toBe("http://api.test/api/characters/7/save-as-build");
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ toggles });
+
+    const sheet = { ...newCharacter(), name: "Vex" };
+    await api.replaceCharacter(7, sheet);
+    expect(fetchMock.mock.calls[2][0]).toBe("http://api.test/api/characters/7");
+    expect(fetchMock.mock.calls[2][1].method).toBe("PUT");
+    expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toEqual(sheet);
   });
 
   it("falls back to the status text when the error body isn't JSON", async () => {

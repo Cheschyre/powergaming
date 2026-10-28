@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.calculator import find_power_attack_breakeven
-from app.routers import builds
+from app.routers import builds, characters
 from app.schemas import (
     BreakevenRequest,
     BreakevenResponse,
@@ -42,10 +42,11 @@ def configure_cors(app: FastAPI, raw_origins: str) -> None:
     )
 
 
-app = FastAPI(title="Power Gaming Calculator API", version="0.4.0")
+app = FastAPI(title="Power Gaming Calculator API", version="0.6.0")
 configure_cors(app, os.environ.get("CORS_ALLOW_ORIGINS", DEFAULT_CORS_ALLOW_ORIGINS))
 
 app.include_router(builds.router)
+app.include_router(characters.router)
 
 
 @app.get("/health")

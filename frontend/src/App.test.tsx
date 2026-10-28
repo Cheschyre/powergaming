@@ -22,4 +22,22 @@ describe("App", () => {
     expect(await screen.findByText("No builds saved yet.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Saved Builds" })).toHaveClass("active");
   });
+
+  it("has a Characters tab and shows the SRD attribution", async () => {
+    vi.mocked(api.listSrdWeapons).mockResolvedValue([]);
+    vi.mocked(api.listCharacters).mockResolvedValue([]);
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(screen.getByRole("contentinfo")).toHaveTextContent(
+      "System Reference Document 5.1",
+    );
+    expect(screen.getByRole("link", { name: /Creative Commons Attribution 4.0/ })).toHaveAttribute(
+      "href",
+      "https://creativecommons.org/licenses/by/4.0/legalcode",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Characters" }));
+    expect(await screen.findByText("No characters saved yet.")).toBeInTheDocument();
+  });
 });
