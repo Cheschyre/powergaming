@@ -135,6 +135,8 @@ export function character(overrides: Partial<Character> = {}): Character {
     other_damage: 0,
     created_at: "2026-10-27T00:00:00Z",
     updated_at: "2026-10-27T00:00:00Z",
+    ability_increases: [],
+    current_scores: { strength: 10, dexterity: 16 },
     ...overrides,
   };
 }

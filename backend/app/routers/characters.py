@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app import crud, schemas
-from app.character import derive_round
+from app.character import derive_round, level_rows
 from app.db import get_db
 from app.service import compute_ac_results
 from app.srd import SRD_WEAPONS
@@ -38,6 +38,13 @@ def calculate_character(req: schemas.CharacterCalculateRequest):
     """Derive a character's round and run it against a list of ACs -- the
     same numbers /api/calculate gives for the derived attacks."""
     return _calculate(req.character, req.toggles, req.ac_list)
+
+
+@router.post("/characters/levels", response_model=schemas.CharacterLevelsResponse)
+def character_levels(req: schemas.CharacterLevelsRequest):
+    """The level 1-20 view for an unsaved sheet: the character rebuilt at
+    each level and run against up to 3 ACs."""
+    return schemas.CharacterLevelsResponse(rows=level_rows(req.character, req.toggles, req.ac_list))
 
 
 # --- Saved characters ---
@@ -110,3 +117,12 @@ def save_character_as_build(
         name=name[:100], attacks=derived.attacks, once_per_turn=derived.once_per_turn
     )
     return crud.create_build(db, build)
+
+
+@router.post("/characters/{character_id}/levels", response_model=schemas.CharacterLevelsResponse)
+def saved_character_levels(
+    character_id: int, req: schemas.LevelViewOptions, db: Session = Depends(get_db)
+):
+    """The level 1-20 view for a saved character."""
+    sheet = crud.character_read(_get_or_404(db, character_id))
+    return schemas.CharacterLevelsResponse(rows=level_rows(sheet, req.toggles, req.ac_list))

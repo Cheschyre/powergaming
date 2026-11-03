@@ -51,6 +51,53 @@
         "title": "ACResult",
         "type": "object"
       },
+      "AbilityIncrease": {
+        "description": "What a character took at one Ability Score Improvement level.",
+        "properties": {
+          "choice": {
+            "enum": [
+              "strength_2",
+              "dexterity_2",
+              "strength_dexterity",
+              "elven_accuracy",
+              "power_attack_feat",
+              "other_feat"
+            ],
+            "title": "Choice",
+            "type": "string"
+          },
+          "level": {
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Level",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "level",
+          "choice"
+        ],
+        "title": "AbilityIncrease",
+        "type": "object"
+      },
+      "AbilityScores": {
+        "properties": {
+          "dexterity": {
+            "title": "Dexterity",
+            "type": "integer"
+          },
+          "strength": {
+            "title": "Strength",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "strength",
+          "dexterity"
+        ],
+        "title": "AbilityScores",
+        "type": "object"
+      },
       "AttackEntry": {
         "description": "One attack roll in a round, with everything that can differ between\nattacks -- including whether this particular attack uses power attack\n(GWM/Sharpshooter). A round is a list of these; repeat an entry for\nExtra Attack rather than using a count.",
         "properties": {
@@ -603,9 +650,64 @@
         "title": "CharacterDeriveRequest",
         "type": "object"
       },
-      "CharacterRead": {
-        "description": "A saved character: the sheet plus its id and timestamps.",
+      "CharacterLevelsRequest": {
+        "description": "The level view for a sheet that isn't saved.",
         "properties": {
+          "ac_list": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Ac List",
+            "type": "array"
+          },
+          "character": {
+            "$ref": "#/components/schemas/CharacterSheet"
+          },
+          "toggles": {
+            "$ref": "#/components/schemas/RoundToggles",
+            "default": {
+              "advantage": false,
+              "disadvantage": false,
+              "power_attack": false
+            }
+          }
+        },
+        "required": [
+          "ac_list",
+          "character"
+        ],
+        "title": "CharacterLevelsRequest",
+        "type": "object"
+      },
+      "CharacterLevelsResponse": {
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/LevelRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rows"
+        ],
+        "title": "CharacterLevelsResponse",
+        "type": "object"
+      },
+      "CharacterRead": {
+        "description": "A saved character: the sheet plus its id, timestamps and its\ncurrent ability scores (starting scores plus increases up to its\nlevel -- read-only, not sent back when saving).",
+        "properties": {
+          "ability_increases": {
+            "items": {
+              "$ref": "#/components/schemas/AbilityIncrease"
+            },
+            "maxItems": 7,
+            "title": "Ability Increases",
+            "type": "array"
+          },
           "character_class": {
             "enum": [
               "fighter",
@@ -618,6 +720,9 @@
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "current_scores": {
+            "$ref": "#/components/schemas/AbilityScores"
           },
           "dexterity": {
             "maximum": 30.0,
@@ -717,6 +822,7 @@
           "level",
           "strength",
           "dexterity",
+          "ability_increases",
           "main_hand",
           "off_hand",
           "two_handed_grip",
@@ -727,7 +833,8 @@
           "other_damage",
           "id",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "current_scores"
         ],
         "title": "CharacterRead",
         "type": "object"
@@ -760,8 +867,16 @@
         "type": "object"
       },
       "CharacterSheet": {
-        "description": "What the player enters. Everything else (proficiency, attacks per\nround, Sneak Attack dice, crit range) is derived from the level.",
+        "description": "What the player enters. Everything else (proficiency, attacks per\nround, Sneak Attack dice, crit range, current ability scores) is\nderived from the level.",
         "properties": {
+          "ability_increases": {
+            "items": {
+              "$ref": "#/components/schemas/AbilityIncrease"
+            },
+            "maxItems": 7,
+            "title": "Ability Increases",
+            "type": "array"
+          },
           "character_class": {
             "enum": [
               "fighter",
@@ -903,6 +1018,92 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "LevelRow": {
+        "description": "The character rebuilt at one level: its round, the results, its\nscores there, and what changed at this level.",
+        "properties": {
+          "attacks": {
+            "items": {
+              "$ref": "#/components/schemas/AttackEntry"
+            },
+            "title": "Attacks",
+            "type": "array"
+          },
+          "dexterity": {
+            "title": "Dexterity",
+            "type": "integer"
+          },
+          "level": {
+            "title": "Level",
+            "type": "integer"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "once_per_turn": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OncePerTurn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ACResult"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "strength": {
+            "title": "Strength",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "attacks",
+          "once_per_turn",
+          "results",
+          "level",
+          "strength",
+          "dexterity",
+          "notes"
+        ],
+        "title": "LevelRow",
+        "type": "object"
+      },
+      "LevelViewOptions": {
+        "description": "Target ACs (up to 3) and round toggles for the level 1-20 view.",
+        "properties": {
+          "ac_list": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Ac List",
+            "type": "array"
+          },
+          "toggles": {
+            "$ref": "#/components/schemas/RoundToggles",
+            "default": {
+              "advantage": false,
+              "disadvantage": false,
+              "power_attack": false
+            }
+          }
+        },
+        "required": [
+          "ac_list"
+        ],
+        "title": "LevelViewOptions",
         "type": "object"
       },
       "OncePerTurn": {
@@ -1712,6 +1913,48 @@
         ]
       }
     },
+    "/api/characters/levels": {
+      "post": {
+        "description": "The level 1-20 view for an unsaved sheet: the character rebuilt at\neach level and run against up to 3 ACs.",
+        "operationId": "character_levels_api_characters_levels_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CharacterLevelsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterLevelsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Character Levels",
+        "tags": [
+          "characters"
+        ]
+      }
+    },
     "/api/characters/{character_id}": {
       "delete": {
         "operationId": "delete_character_api_characters__character_id__delete",
@@ -1885,6 +2128,59 @@
           }
         },
         "summary": "Calculate Saved Character",
+        "tags": [
+          "characters"
+        ]
+      }
+    },
+    "/api/characters/{character_id}/levels": {
+      "post": {
+        "description": "The level 1-20 view for a saved character.",
+        "operationId": "saved_character_levels_api_characters__character_id__levels_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "character_id",
+            "required": true,
+            "schema": {
+              "title": "Character Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LevelViewOptions"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterLevelsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Saved Character Levels",
         "tags": [
           "characters"
         ]

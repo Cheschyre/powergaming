@@ -103,13 +103,15 @@ export function newCharacter(): CharacterSheet {
     sneak_attack_can_trigger: true,
     other_to_hit: 0,
     other_damage: 0,
+    ability_increases: [],
   };
 }
 
-/** A saved character back to an editable sheet (drops id/timestamps). */
+/** A saved character back to an editable sheet (drops id, timestamps and
+ * the server-computed current scores). */
 export function toSheet(character: Character): CharacterSheet {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { id, created_at, updated_at, ...sheet } = character;
+  const { id, created_at, updated_at, current_scores, ...sheet } = character;
   return sheet;
 }
 

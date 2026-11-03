@@ -75,6 +75,7 @@ describe("labels", () => {
     const sheet = toSheet(character());
     expect(sheet).not.toHaveProperty("id");
     expect(sheet).not.toHaveProperty("created_at");
+    expect(sheet).not.toHaveProperty("current_scores");
     expect(sheet.name).toBe("Vex");
   });
 });
