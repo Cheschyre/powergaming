@@ -52,15 +52,44 @@ release can split if it grows.
 
 ### v0.7.0 -- Character sheet, second slice
 
-- **Level-by-level view:** rebuild a character's attacks at every level
-  1-20 (proficiency, Extra Attack, Sneak Attack dice, Champion crits)
-  and show damage per round against a chosen AC, as a table and a line
-  chart. Ability scores can change by level, entered at the levels where
-  increases happen.
-- **Elven Accuracy** on the sheet ("roll 3d20 with advantage", stored on
-  the character).
+Details agreed 2026-11-03.
+
+- **Ability scores by level, like a real sheet.** The sheet's STR and DEX
+  become *starting* scores (level 1). At each Ability Score Improvement
+  level -- Fighter 4, 6, 8, 12, 14, 16, 19; Rogue 4, 8, 10, 12, 16, 19 --
+  the character records one choice:
+  - +2 STR, +2 DEX, or +1 STR / +1 DEX (an ASI can't raise a score above
+    20);
+  - **Elven Accuracy** (+1 DEX; attacks using DEX roll 3d20 when they
+    have advantage -- 2014 rule: DEX or a mental ability, never STR);
+  - **Power attack feat** (Great Weapon Master / Sharpshooter style:
+    the round's power-attack toggle only applies from this level on);
+  - another feat (no score change).
+  Scores at any level are the starting scores plus the choices up to it;
+  the character's current scores follow from its level. Future ASIs can
+  be planned ahead. Choices at levels the class doesn't get are dropped
+  when the class changes.
+- **Existing characters keep their numbers:** their scores become the
+  starting scores with no increases recorded, and with no power attack
+  feat recorded the toggle keeps applying at every level, as today. No
+  database migration (the sheet is JSON).
+- **Level view:** a "Levels 1-20" button on each character card opens
+  a table (one row per level) and a line chart of damage per round,
+  against **up to 3 target ACs** (default 13, 15, 17; editable). The
+  card's round toggles apply at every level. With power attack on, a
+  dashed "without power attack" line shows where it stops paying off.
+  Rows note what changes there: "Extra Attack", "Sneak Attack 4d6",
+  "Improved Critical", "+2 DEX", "Elven Accuracy", ...
+- **Server-side:** the level view is the existing derivation run at each
+  level (`POST /api/characters/{id}/levels` and an unsaved-sheet
+  version), so every number matches the normal Run at that level.
+- **Charts: Recharts**, used here first and reused by v0.8.
 - Already on `develop`: number fields can be cleared without a 0
   appearing.
+
+Build order: (1) backend -- ASI choices, feats, level derivation and
+endpoints; (2) the sheet's ASI editor; (3) the level view with Recharts;
+(4) README and the release.
 
 ### v0.8.0 -- Comparison and charts
 
@@ -68,7 +97,7 @@ release can split if it grows.
   damage per round against the same ACs, with a damage-vs-AC chart.
 - **Power-attack view on characters:** the breakeven AC for a character's
   power attack, using its real numbers.
-- One charting library for the app, chosen here and reused afterwards.
+- Charts reuse v0.7's Recharts setup.
 
 ### v0.9.0 -- Martial classes
 
