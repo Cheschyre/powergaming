@@ -349,10 +349,11 @@ melee or ranged weapons).
 ## Roadmap
 
 See [ROADMAP.md](ROADMAP.md): the direction (self-hosted for one table,
-no accounts), what 1.0 means, and the planned releases -- the character
-sheet's level view (v0.7), comparison and charts (v0.8), martial classes
-(v0.9), spells and saving throws (v0.10-v0.11), defense and encounters
-(v0.12), then a stable 1.0. It also keeps the history of steps 1-13.
+no accounts, 2014 rules), what 1.0 means, and the planned releases --
+the character sheet's level view (v0.7), comparison and charts (v0.8),
+martial classes as data (v0.9), custom classes and subclasses (v0.10),
+spells and saving throws (v0.11-v0.12), defense and encounters (v0.13),
+then a stable 1.0. It also keeps the history of steps 1-13.
 
 ## Attribution
 

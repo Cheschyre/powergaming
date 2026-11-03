@@ -13,12 +13,16 @@ its coding starts, the way step 13's first slice was.
   on the character sheet, comparison and charts, and defense and
   encounters (monsters attacking you, rounds to defeat a monster, party
   damage).
+- **Custom content:** the table plays with a supplemental rule set, so
+  custom classes and subclasses are first-class -- kept separate from
+  official (SRD) content and hidden unless "show custom content" is on.
+- **Editions:** 2014 rules. 2024 rules aren't planned (bottom of "After
+  1.0").
 - **What 1.0 means:** the core of that scope is in, and it's stable.
   Saved builds and characters never break without a migration that
   carries them forward, the API doesn't change incompatibly within 1.x,
   data can be exported and re-imported, and there's a user guide. Bigger
-  extras (2024 rules, multiclassing, probability distributions) come
-  after 1.0.
+  extras (multiclassing, probability distributions) come after 1.0.
 
 ## Principles
 
@@ -31,9 +35,12 @@ These held for steps 1-13 and keep holding:
 - **Exact math, checked.** Expected values are computed exactly, and
   each new formula is tested against brute-force enumeration or a hand
   calculation.
-- **Rules content from the SRD only**, with attribution. Anything else
-  is user-entered or an effect toggle named for what it does
-  ("roll 3d20 with advantage", not the feat's name).
+- **Official content is SRD only**, with attribution. Anything else is
+  user-entered: an effect toggle named for what it does ("roll 3d20 with
+  advantage", not the feat's name), or custom content.
+- **Official and custom stay separate.** Custom classes and subclasses
+  are stored and labelled as custom, and only appear in lists when "show
+  custom content" is on.
 - **Every release goes test -> prod.** Developed on `develop`, deployed
   to `powergaming-test`, released to `powergaming-prod` from a version
   tag on `main`, with a database backup before every migration.
@@ -65,6 +72,13 @@ release can split if it grows.
 
 ### v0.9.0 -- Martial classes
 
+Classes become data: each class and subclass is a level-by-level table
+of what it adds (attacks per round, crit range, extra damage dice,
+fighting styles, ...), and the sheet derives attacks from those tables.
+The SRD classes below are the built-in tables, written in the same
+format v0.10's custom classes will use. Fighter and Rogue move onto it
+first, with their numbers unchanged (checked by the existing tests).
+
 - **Barbarian:** Rage damage by level, Reckless Attack (advantage),
   Brutal Critical (extra crit dice, step 12).
 - **Paladin:** Divine Smite as a choice per round (slot level), Improved
@@ -79,7 +93,23 @@ release can split if it grows.
 - **Races (SRD):** the ones that change attack numbers, e.g. Half-Orc
   Savage Attacks.
 
-### v0.10.0 -- Spells, part 1: the engine
+### v0.10.0 -- Custom classes and subclasses
+
+- **Create and edit custom classes and subclasses** in the app, using
+  v0.9's class format: features by level, picked from what the engine
+  models (extra attacks, crit range, once-per-turn dice, rage-style
+  flat damage, extra crit dice, rerolls, fighting styles, ...), plus a
+  flat "other" bonus for anything not modeled.
+- **Custom subclasses for official classes** too (e.g. a supplemental
+  Fighter subclass).
+- **"Show custom content" toggle:** off by default; when off, custom
+  classes and subclasses don't appear in the sheet's lists. Characters
+  using custom content are marked as such.
+- Stored in their own table, labelled custom, included in v1.0's
+  export/import.
+- Spell-based features for custom classes come with v0.12's casters.
+
+### v0.11.0 -- Spells, part 1: the engine
 
 - **Attack-roll spells** in the calculator: they're attacks with spell
   attack bonus and dice, so they mostly reuse the engine; cantrip
@@ -90,7 +120,7 @@ release can split if it grows.
 - **Area spells:** expected damage across N targets, each saving
   separately.
 
-### v0.11.0 -- Spells, part 2: casters on the sheet
+### v0.12.0 -- Spells, part 2: casters on the sheet
 
 - Classes whose damage is mostly spells: Warlock (Eldritch Blast,
   Agonizing Blast), Sorcerer and Wizard (cantrips, a few signature
@@ -99,8 +129,9 @@ release can split if it grows.
 - Spellcasting ability, spell attack bonus and save DC derived from the
   sheet.
 - Paladin smites move onto spell slots here.
+- Custom classes and subclasses can use spellcasting features too.
 
-### v0.12.0 -- Defense and encounters
+### v0.13.0 -- Defense and encounters
 
 - **Monsters:** a simple stat block (AC, hit points, save bonuses, its
   attacks), entered by hand. Monsters use the same attack engine.
@@ -113,7 +144,8 @@ release can split if it grows.
 
 ### v1.0.0 -- Stable
 
-- **Data safety:** export all builds, characters and monsters to a JSON
+- **Data safety:** export all builds, characters, monsters and custom
+  content to a JSON
   file and import them back (also a way to copy data between test and
   prod).
 - **Compatibility promise:** within 1.x, every schema change comes with a
@@ -128,12 +160,8 @@ release can split if it grows.
 
 ## After 1.0
 
-Not scheduled yet, roughly in order of interest:
+Not scheduled yet, in order of interest:
 
-- **2024 rules** as an edition choice on the sheet (e.g. 2024 Great
-  Weapon Master adds proficiency with no -5; Sharpshooter lost its
-  -5/+10). The generic calculator already handles both editions through
-  free numbers.
 - **Probability distributions:** not just expected damage but the
   chance of at least X damage, or of defeating a monster within N
   rounds.
@@ -141,6 +169,11 @@ Not scheduled yet, roughly in order of interest:
 - More feats and races as effect toggles; resources across a day
   (short rests, spell slots over several fights).
 - Sharing a build or character as a link or file.
+- **2024 rules** -- not currently planned; last on this list. If it ever
+  happens, it's an edition choice on the sheet (e.g. 2024 Great Weapon
+  Master adds proficiency with no -5; Sharpshooter lost its -5/+10). The
+  generic calculator already handles both editions through free
+  numbers.
 
 ## Known gaps
 
