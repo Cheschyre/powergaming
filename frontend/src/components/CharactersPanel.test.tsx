@@ -55,6 +55,19 @@ describe("CharactersPanel", () => {
     );
   });
 
+  it("shows current scores (not starting ones) and feats taken", async () => {
+    vi.mocked(api.listCharacters).mockResolvedValue([
+      character({
+        dexterity: 15,
+        ability_increases: [{ level: 4, choice: "elven_accuracy" }],
+        current_scores: { strength: 10, dexterity: 16 },
+      }),
+    ]);
+    render(<CharactersPanel />);
+    expect(await screen.findByText("Vex")).toBeInTheDocument();
+    expect(card("Vex")).toHaveTextContent("STR 10, DEX 16 · Elven Accuracy");
+  });
+
   it("runs a character with this round's toggles and shows its derived attacks", async () => {
     vi.mocked(api.calculateForCharacter).mockResolvedValue({
       ...derived,

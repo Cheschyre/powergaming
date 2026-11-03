@@ -1,15 +1,20 @@
 import { useState, type FormEvent } from "react";
 import {
+  ASI_CHOICE_LABELS,
+  ASI_LEVELS,
   canDualWield,
   CLASS_LABELS,
   defaultProficiency,
   FIGHTING_STYLE_LABELS,
+  MODELED_FEATS,
   newCharacter,
+  scoresAtLevel,
   srdChoice,
   weaponProfile,
   type WeaponTable,
 } from "../characters";
 import type {
+  AbilityIncreaseChoice,
   CharacterClass,
   CharacterSheet,
   FightingStyle,
@@ -52,6 +57,8 @@ export default function CharacterForm({
   const main = weaponProfile(sheet.main_hand, weapons);
   const offHand = sheet.off_hand ?? null;
   const fighter = sheet.character_class === "fighter";
+  const increases = sheet.ability_increases ?? [];
+  const now = scoresAtLevel(sheet, sheet.level);
   const canUseOffHand = canDualWield(main) && !sheet.two_handed_grip;
   const canUseTwoHands = !!main?.versatile_die_sides && !offHand;
 
@@ -72,6 +79,10 @@ export default function CharacterForm({
       // Fighting styles and Champion are Fighter-only in this version.
       fighting_style: cls === "fighter" ? sheet.fighting_style : "none",
       subclass: cls === "fighter" ? sheet.subclass : "none",
+      // Classes get Ability Score Improvements at different levels.
+      ability_increases: increases.filter((i) =>
+        ASI_LEVELS[cls].includes(i.level),
+      ),
       main_hand: withProficiency(cls, sheet.main_hand),
       off_hand: offHand && withProficiency(cls, offHand),
     });
@@ -91,6 +102,17 @@ export default function CharacterForm({
       off_hand: on
         ? withProficiency(sheet.character_class, srdChoice("dagger"))
         : null,
+    });
+  }
+
+  function setIncrease(level: number, choice: string) {
+    const others = increases.filter((i) => i.level !== level);
+    update({
+      ability_increases: choice
+        ? [...others, { level, choice: choice as AbilityIncreaseChoice }].sort(
+            (a, b) => a.level - b.level,
+          )
+        : others,
     });
   }
 
@@ -138,20 +160,68 @@ export default function CharacterForm({
           max={20}
         />
         <NumberField
-          label="Strength"
+          label="Starting STR (level 1)"
           value={sheet.strength}
           onChange={(v) => update({ strength: v })}
           min={1}
           max={30}
         />
         <NumberField
-          label="Dexterity"
+          label="Starting DEX (level 1)"
           value={sheet.dexterity}
           onChange={(v) => update({ dexterity: v })}
           min={1}
           max={30}
         />
       </div>
+
+      <p className="hint">
+        At level {sheet.level}: STR {now.strength}, DEX {now.dexterity}
+      </p>
+
+      <fieldset
+        className="weapon-picker"
+        aria-label="Ability Score Improvements"
+      >
+        <legend>Ability Score Improvements</legend>
+        <p className="hint">
+          Starting scores plus these choices give the scores at each level (an
+          increase stops at 20). Levels above {sheet.level} are planned ahead.
+          Elven Accuracy: attacks using DEX roll 3d20 with advantage. Power
+          attack feat (Great Weapon Master / Sharpshooter style): the round's
+          power attack toggle counts from that level on. Other feat: no change
+          to these numbers.
+        </p>
+        <div className="field-grid">
+          {ASI_LEVELS[sheet.character_class].map((level) => {
+            const current =
+              increases.find((i) => i.level === level)?.choice ?? "";
+            return (
+              <SelectField
+                key={level}
+                label={`Level ${level}${level > sheet.level ? " (planned)" : ""}`}
+                value={current}
+                onChange={(v) => setIncrease(level, v)}
+              >
+                <option value="">None yet</option>
+                {Object.entries(ASI_CHOICE_LABELS).map(([value, label]) => {
+                  // A modeled feat can only be taken once.
+                  const takenElsewhere =
+                    MODELED_FEATS.includes(value as AbilityIncreaseChoice) &&
+                    increases.some(
+                      (i) => i.choice === value && i.level !== level,
+                    );
+                  return (
+                    <option key={value} value={value} disabled={takenElsewhere}>
+                      {label}
+                    </option>
+                  );
+                })}
+              </SelectField>
+            );
+          })}
+        </div>
+      </fieldset>
 
       {fighter ? (
         <div className="field-grid">

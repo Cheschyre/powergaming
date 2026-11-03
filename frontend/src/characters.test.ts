@@ -4,6 +4,8 @@ import {
   defaultProficiency,
   describeCharacter,
   describeWeapons,
+  featsTaken,
+  scoresAtLevel,
   srdChoice,
   toSheet,
   weaponLabel,
@@ -77,5 +79,55 @@ describe("labels", () => {
     expect(sheet).not.toHaveProperty("created_at");
     expect(sheet).not.toHaveProperty("current_scores");
     expect(sheet.name).toBe("Vex");
+  });
+});
+
+describe("scores by level (same rule as the server)", () => {
+  const base = character({
+    character_class: "fighter",
+    strength: 15,
+    dexterity: 14,
+    ability_increases: [
+      { level: 4, choice: "strength_2" },
+      { level: 6, choice: "strength_dexterity" },
+      { level: 8, choice: "strength_2" },
+      { level: 12, choice: "strength_2" },
+    ],
+  });
+
+  it.each([
+    [3, 15, 14],
+    [4, 17, 14],
+    [6, 18, 15],
+    [8, 20, 15],
+    [12, 20, 15], // capped at 20
+  ])("level %i: STR %i, DEX %i", (level, strength, dexterity) => {
+    expect(scoresAtLevel(base, level)).toEqual({ strength, dexterity });
+  });
+
+  it("leaves a score above 20 (magic) alone and treats a missing plan as none", () => {
+    const strong = character({
+      strength: 22,
+      ability_increases: [{ level: 4, choice: "strength_2" }],
+    });
+    expect(scoresAtLevel(strong, 4).strength).toBe(22);
+    expect(
+      scoresAtLevel({ ...character(), ability_increases: undefined }, 20),
+    ).toEqual({
+      strength: 10,
+      dexterity: 16,
+    });
+  });
+
+  it("lists modeled feats taken by the current level", () => {
+    const rogue = character({
+      level: 8,
+      ability_increases: [
+        { level: 4, choice: "elven_accuracy" },
+        { level: 8, choice: "other_feat" },
+        { level: 12, choice: "power_attack_feat" }, // planned, not taken yet
+      ],
+    });
+    expect(featsTaken(rogue)).toEqual(["Elven Accuracy"]);
   });
 });

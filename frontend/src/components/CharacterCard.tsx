@@ -9,6 +9,7 @@ import {
 } from "../attacks";
 import {
   describeCharacter,
+  featsTaken,
   describeWeapons,
   type WeaponTable,
 } from "../characters";
@@ -92,7 +93,11 @@ export default function CharacterCard({
       </div>
       <p className="build-summary">
         {describeCharacter(character)} · {describeWeapons(character, weapons)} ·
-        STR {character.strength}, DEX {character.dexterity}
+        STR {character.current_scores.strength}, DEX{" "}
+        {character.current_scores.dexterity}
+        {featsTaken(character).length > 0 && (
+          <> · {featsTaken(character).join(", ")}</>
+        )}
       </p>
 
       <div className="field-grid round-toggles">
