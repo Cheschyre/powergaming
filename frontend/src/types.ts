@@ -40,3 +40,5 @@ export type AbilityIncreaseChoice = AbilityIncrease["choice"];
 export type FightingStyle = CharacterSheet["fighting_style"];
 export type RoundToggles = Schemas["RoundToggles"];
 export type CharacterCalculateResponse = Schemas["CharacterCalculateResponse"];
+export type LevelRow = Schemas["LevelRow"];
+export type CharacterLevelsResponse = Schemas["CharacterLevelsResponse"];

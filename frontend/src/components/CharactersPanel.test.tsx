@@ -98,6 +98,28 @@ describe("CharactersPanel", () => {
     ).toHaveAttribute("colspan", "2");
   });
 
+  it("opens the level view from the card", async () => {
+    vi.mocked(api.levelsForCharacter).mockResolvedValue({ rows: [] });
+    const user = userEvent.setup();
+    render(<CharactersPanel />);
+    await screen.findByText("Vex");
+
+    const button = within(card("Vex")).getByRole("button", {
+      name: "Levels 1–20",
+    });
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    await user.click(button);
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    expect(
+      await screen.findByRole("region", { name: "Vex at levels 1 to 20" }),
+    ).toBeInTheDocument();
+    expect(api.levelsForCharacter).toHaveBeenCalledWith(1, [13, 15, 17], {
+      advantage: false,
+      disadvantage: false,
+      power_attack: false,
+    });
+  });
+
   it("saves the character's round as a build", async () => {
     vi.mocked(api.saveCharacterAsBuild).mockResolvedValue(
       build({ name: "Vex (level 5)" }),

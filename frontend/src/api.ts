@@ -10,6 +10,7 @@ import type {
   BuildCreate,
   Character,
   CharacterCalculateResponse,
+  CharacterLevelsResponse,
   CharacterSheet,
   RoundToggles,
   SrdWeapon,
@@ -155,5 +156,16 @@ export function saveCharacterAsBuild(
   return request<Build>(`/api/characters/${id}/save-as-build`, {
     method: "POST",
     body: JSON.stringify(name ? { name, toggles } : { toggles }),
+  });
+}
+
+export function levelsForCharacter(
+  id: number,
+  acList: number[],
+  toggles: RoundToggles,
+): Promise<CharacterLevelsResponse> {
+  return request<CharacterLevelsResponse>(`/api/characters/${id}/levels`, {
+    method: "POST",
+    body: JSON.stringify({ ac_list: acList, toggles }),
   });
 }
