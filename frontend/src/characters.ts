@@ -9,6 +9,7 @@ import type {
   CharacterClass,
   CharacterSheet,
   FightingStyle,
+  PowerAttackBreakeven,
   SrdWeapon,
   WeaponChoice,
   WeaponProfile,
@@ -215,4 +216,33 @@ export function describeWeapons(
   const main = weaponLabel(c.main_hand, weapons);
   if (c.off_hand) return `${main} + ${weaponLabel(c.off_hand, weapons)}`;
   return c.two_handed_grip ? `${main} (two hands)` : main;
+}
+
+/** The round's power-attack breakeven as a sentence (see
+ * PowerAttackBreakeven in backend/app/schemas.py). */
+export function describeBreakeven(b: PowerAttackBreakeven): string {
+  switch (b.status) {
+    case "pays_off_up_to":
+      return `Power attack pays off against AC ${b.ac} or lower.`;
+    case "always":
+      return "Power attack pays off at every AC (1–30).";
+    case "never":
+      return "Power attack never pays off: the round does more without it, even at AC 1.";
+    case "not_applicable":
+      return "Power attack doesn't apply: no heavy or ranged weapon, or the feat isn't taken yet at this level.";
+  }
+}
+
+/** The same, short, for a table cell: "AC 17", "Every AC", "Never", "–". */
+export function breakevenCell(b: PowerAttackBreakeven): string {
+  switch (b.status) {
+    case "pays_off_up_to":
+      return `AC ${b.ac}`;
+    case "always":
+      return "Every AC";
+    case "never":
+      return "Never";
+    case "not_applicable":
+      return "–";
+  }
 }

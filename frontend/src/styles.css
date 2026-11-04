@@ -411,3 +411,9 @@ button.secondary {
   color: #aaa;
   font-size: 0.8rem;
 }
+
+.breakeven {
+  color: #f0f0f0;
+  font-size: 0.85rem;
+  margin: 0.75rem 0 0;
+}

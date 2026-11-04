@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { levelsForCharacter } from "../api";
 import { parseAcList } from "../attacks";
+import { breakevenCell } from "../characters";
 import type { Character, LevelRow, RoundToggles } from "../types";
 import LevelChart from "./LevelChart";
 
@@ -64,6 +65,8 @@ export default function LevelView({ character, toggles }: LevelViewProps) {
   const withoutPa = !!rows?.some((r) =>
     r.results.some((x) => x.total_had_without_power_attack !== null),
   );
+  // Power attack toggled on: show each level's whole-round breakeven.
+  const showBreakeven = !!rows?.some((r) => r.power_attack_breakeven !== null);
 
   return (
     <section
@@ -106,6 +109,9 @@ export default function LevelView({ character, toggles }: LevelViewProps) {
                       AC {ac} without power attack
                     </th>
                   ))}
+                {showBreakeven && (
+                  <th scope="col">Power attack pays off up to</th>
+                )}
                 <th scope="col">What changes</th>
               </tr>
             </thead>
@@ -134,6 +140,13 @@ export default function LevelView({ character, toggles }: LevelViewProps) {
                         {r.total_had_without_power_attack?.toFixed(2) ?? "–"}
                       </td>
                     ))}
+                  {showBreakeven && (
+                    <td>
+                      {row.power_attack_breakeven
+                        ? breakevenCell(row.power_attack_breakeven)
+                        : "–"}
+                    </td>
+                  )}
                   <td className="level-notes">{row.notes.join(", ")}</td>
                 </tr>
               ))}

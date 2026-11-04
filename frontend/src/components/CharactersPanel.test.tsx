@@ -99,6 +99,41 @@ describe("CharactersPanel", () => {
     ).toHaveAttribute("colspan", "2");
   });
 
+  it("says where power attack stops paying off after a run", async () => {
+    vi.mocked(api.calculateForCharacter).mockResolvedValue({
+      ...derived,
+      results: [acResult({}, 2)],
+      power_attack_breakeven: { status: "pays_off_up_to", ac: 17 },
+    });
+    const user = userEvent.setup();
+    render(<CharactersPanel />);
+    await screen.findByText("Vex");
+
+    await user.click(within(card("Vex")).getByLabelText(/Power attack/));
+    await user.click(within(card("Vex")).getByRole("button", { name: "Run" }));
+    expect(
+      await within(card("Vex")).findByText(
+        "Power attack pays off against AC 17 or lower.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("shows no breakeven line with power attack off", async () => {
+    vi.mocked(api.calculateForCharacter).mockResolvedValue({
+      ...derived,
+      results: [acResult({}, 2)],
+      power_attack_breakeven: null,
+    });
+    const user = userEvent.setup();
+    render(<CharactersPanel />);
+    await screen.findByText("Vex");
+    await user.click(within(card("Vex")).getByRole("button", { name: "Run" }));
+    await within(card("Vex")).findByRole("table");
+    expect(
+      within(card("Vex")).queryByText(/Power attack (pays|never|doesn)/),
+    ).not.toBeInTheDocument();
+  });
+
   it("opens the level view from the card", async () => {
     vi.mocked(api.levelsForCharacter).mockResolvedValue({ rows: [] });
     const user = userEvent.setup();

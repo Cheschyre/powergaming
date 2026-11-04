@@ -15,12 +15,20 @@ const NO_TOGGLES: RoundToggles = {
 };
 
 function levelRows(acs: number, withoutPa = false): LevelRow[] {
+  return levelRowsWith(acs, withoutPa, () => null);
+}
+
+function levelRowsWith(
+  acs: number,
+  withoutPa: boolean,
+  breakeven: (level: number) => LevelRow["power_attack_breakeven"],
+): LevelRow[] {
   return Array.from({ length: 20 }, (_, i) => ({
     level: i + 1,
     strength: 10,
     dexterity: i + 1 >= 4 ? 18 : 16,
     notes: i + 1 === 4 ? ["+2 DEX"] : i + 1 === 5 ? ["Proficiency +3"] : [],
-    power_attack_breakeven: null,
+    power_attack_breakeven: breakeven(i + 1),
     attacks: [],
     once_per_turn: null,
     results: Array.from({ length: acs }, (_, a) =>
@@ -147,5 +155,43 @@ describe("LevelView", () => {
     expect(
       await screen.findByText("422: ac_list: too long"),
     ).toBeInTheDocument();
+  });
+
+  it("adds each level's power-attack breakeven when power attack is on", async () => {
+    vi.mocked(api.levelsForCharacter).mockResolvedValue({
+      rows: levelRowsWith(3, true, (level) =>
+        level < 4
+          ? { status: "not_applicable", ac: null }
+          : { status: "pays_off_up_to", ac: 12 + level },
+      ),
+    });
+    render(
+      <LevelView
+        character={character()}
+        toggles={{ ...NO_TOGGLES, power_attack: true }}
+      />,
+    );
+    await screen.findByRole("table", { name: "Damage per round by level" });
+
+    expect(
+      screen.getByRole("columnheader", { name: "Power attack pays off up to" }),
+    ).toBeInTheDocument();
+    const cells = (n: number) =>
+      within(bodyRows()[n])
+        .getAllByRole("cell")
+        .map((c) => c.textContent);
+    expect(cells(2)).toContain("–"); // level 3: feat not taken yet
+    expect(cells(4)).toContain("AC 17"); // level 5
+  });
+
+  it("has no breakeven column with power attack off", async () => {
+    vi.mocked(api.levelsForCharacter).mockResolvedValue({ rows: levelRows(3) });
+    render(<LevelView character={character()} toggles={NO_TOGGLES} />);
+    await screen.findByRole("table", { name: "Damage per round by level" });
+    expect(
+      screen.queryByRole("columnheader", {
+        name: "Power attack pays off up to",
+      }),
+    ).not.toBeInTheDocument();
   });
 });
