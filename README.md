@@ -9,7 +9,8 @@ dice, rerolled damage dice, 3d20 advantage, and a GWM/Sharpshooter-style
 power attack breakeven finder. Builds
 can be saved and re-run against new target ACs without re-entering every
 field, and characters (2014 Fighter or Rogue) can be entered as a mini
-character sheet that works out their attacks for you.
+character sheet that works out their attacks for you -- at their level,
+or at every level 1-20 with a damage chart.
 
 The original CLI script is now a full app with a versioned
 frontend/backend, a test environment, and a production environment on
@@ -55,8 +56,8 @@ powergaming/
 │   │   ├── types.ts           # friendly names for the generated API types
 │   │   ├── api.ts             # fetch wrapper, one function per endpoint
 │   │   ├── App.tsx            # tab switcher
-│   │   ├── characters.ts      # character sheet helpers (defaults, proficiency)
-│   │   └── components/        # CalculatorPanel, BuildsPanel, CharactersPanel, ...
+│   │   ├── characters.ts      # character sheet helpers (defaults, proficiency, ASIs)
+│   │   └── components/        # CalculatorPanel, BuildsPanel, CharactersPanel, LevelView, ...
 │   ├── vite.config.ts
 │   └── package.json
 ├── .github/
@@ -305,16 +306,29 @@ Response shape is identical to `/api/calculate`.
 ### Characters (2014 rules, Fighter or Rogue)
 
 A character sheet is what a player enters; the server derives the round's
-attacks from it (`app/character.py`):
+attacks from it (`app/character.py`) -- at the character's level, or at
+any level for the level view:
 
 ```json
 {
   "name": "Vex", "character_class": "rogue", "level": 5,
   "strength": 10, "dexterity": 16,
   "main_hand": {"srd_weapon": "shortsword"},
-  "off_hand": {"srd_weapon": "dagger"}
+  "off_hand": {"srd_weapon": "dagger"},
+  "ability_increases": [{"level": 4, "choice": "elven_accuracy"}]
 }
 ```
+
+`strength` and `dexterity` are **starting scores** (level 1).
+`ability_increases` holds one choice per Ability Score Improvement level
+(Fighter 4, 6, 8, 12, 14, 16, 19; Rogue 4, 8, 10, 12, 16, 19):
+`strength_2`, `dexterity_2`, `strength_dexterity` (+1 each),
+`elven_accuracy` (+1 DEX; attacks using DEX roll 3d20 with advantage),
+`power_attack_feat` (the power attack toggle only applies from that
+level; with none recorded it applies at every level), or `other_feat`.
+An increase can't raise a score above 20. Choices above the character's
+level are a plan and only count in the level view. Saved characters also
+return `current_scores` (read-only).
 
 Optional: `two_handed_grip` (versatile weapons), `fighting_style`
 (Fighter: `archery`, `dueling`, `great_weapon_fighting`,
@@ -345,6 +359,12 @@ melee or ranged weapons).
 - `POST /api/characters/{id}/save-as-build` `{name?, toggles}` -- saves
   the derived round as a build (default name "Vex (level 5)"); a
   snapshot that later character edits don't change.
+- `POST /api/characters/{id}/levels` `{ac_list, toggles}` (and
+  `POST /api/characters/levels` with a `character` for an unsaved sheet)
+  -- the level view: `rows` for levels 1-20 against up to 3 ACs, each
+  with that level's `attacks`, `once_per_turn`, `results`, `strength`,
+  `dexterity` and `notes` ("Extra Attack", "Sneak Attack 4d6", "+2 STR").
+  Every row equals a normal calculate of the character at that level.
 
 ## Roadmap
 

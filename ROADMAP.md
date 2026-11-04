@@ -50,9 +50,9 @@ These held for steps 1-13 and keep holding:
 Each line is a release. Version numbers are a plan, not a promise: a
 release can split if it grows.
 
-### v0.7.0 -- Character sheet, second slice
+### v0.7.0 -- Character sheet, second slice -- done
 
-Details agreed 2026-11-03.
+Details agreed 2026-11-03; built as agreed.
 
 - **Ability scores by level, like a real sheet.** The sheet's STR and DEX
   become *starting* scores (level 1). At each Ability Score Improvement
@@ -87,9 +87,10 @@ Details agreed 2026-11-03.
 - Already on `develop`: number fields can be cleared without a 0
   appearing.
 
-Build order: (1) backend -- ASI choices, feats, level derivation and
-endpoints; (2) the sheet's ASI editor; (3) the level view with Recharts;
-(4) README and the release.
+Built in four parts: (1) backend -- ASI choices, feats, level derivation
+and endpoints; (2) the sheet's ASI editor; (3) the level view with
+Recharts, loaded on first open so the main bundle stays small; (4) README
+and the release.
 
 ### v0.8.0 -- Comparison and charts
 
