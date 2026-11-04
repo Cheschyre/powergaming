@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import BreakevenPanel from "./components/BreakevenPanel";
 import BuildsPanel from "./components/BuildsPanel";
 import CalculatorPanel from "./components/CalculatorPanel";
 import CharactersPanel from "./components/CharactersPanel";
 
-type Tab = "calculator" | "breakeven" | "builds" | "characters";
+// Loaded on first open: it brings the chart library with it.
+const ComparePanel = lazy(() => import("./components/ComparePanel"));
+
+type Tab = "calculator" | "breakeven" | "builds" | "characters" | "compare";
 
 export default function App() {
   const [tab, setTab] = useState<Tab>("calculator");
@@ -26,7 +29,10 @@ export default function App() {
           >
             Breakeven
           </button>
-          <button className={tab === "builds" ? "active" : ""} onClick={() => setTab("builds")}>
+          <button
+            className={tab === "builds" ? "active" : ""}
+            onClick={() => setTab("builds")}
+          >
             Saved Builds
           </button>
           <button
@@ -34,6 +40,12 @@ export default function App() {
             onClick={() => setTab("characters")}
           >
             Characters
+          </button>
+          <button
+            className={tab === "compare" ? "active" : ""}
+            onClick={() => setTab("compare")}
+          >
+            Compare
           </button>
         </nav>
       </header>
@@ -43,11 +55,16 @@ export default function App() {
         {tab === "breakeven" && <BreakevenPanel />}
         {tab === "builds" && <BuildsPanel />}
         {tab === "characters" && <CharactersPanel />}
+        {tab === "compare" && (
+          <Suspense fallback={<p>Loading…</p>}>
+            <ComparePanel />
+          </Suspense>
+        )}
       </main>
 
       <footer className="attribution">
-        This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”)
-        by Wizards of the Coast LLC, available at{" "}
+        This work includes material taken from the System Reference Document 5.1
+        (“SRD 5.1”) by Wizards of the Coast LLC, available at{" "}
         <a href="https://dnd.wizards.com/resources/systems-reference-document">
           dnd.wizards.com/resources/systems-reference-document
         </a>
