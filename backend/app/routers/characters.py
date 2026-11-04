@@ -5,9 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app import crud, schemas
-from app.character import derive_round, level_rows
+from app.character import calculate_round, derive_round, level_rows
 from app.db import get_db
-from app.service import compute_ac_results
 from app.srd import SRD_WEAPONS
 
 router = APIRouter(prefix="/api", tags=["characters"])
@@ -17,14 +16,6 @@ router = APIRouter(prefix="/api", tags=["characters"])
 def list_srd_weapons():
     """The 2014 SRD weapons table (SRD 5.1, CC-BY-4.0 -- see app/srd.py)."""
     return list(SRD_WEAPONS.values())
-
-
-def _calculate(
-    sheet: schemas.CharacterSheet, toggles: schemas.RoundToggles, ac_list: list[int]
-) -> schemas.CharacterCalculateResponse:
-    derived = derive_round(sheet, toggles)
-    results = compute_ac_results(derived.attacks, ac_list, derived.once_per_turn)
-    return schemas.CharacterCalculateResponse(**derived.model_dump(), results=results)
 
 
 @router.post("/characters/derive", response_model=schemas.DerivedRound)
@@ -37,7 +28,7 @@ def derive_character(req: schemas.CharacterDeriveRequest):
 def calculate_character(req: schemas.CharacterCalculateRequest):
     """Derive a character's round and run it against a list of ACs -- the
     same numbers /api/calculate gives for the derived attacks."""
-    return _calculate(req.character, req.toggles, req.ac_list)
+    return calculate_round(req.character, req.toggles, req.ac_list)
 
 
 @router.post("/characters/levels", response_model=schemas.CharacterLevelsResponse)
@@ -96,7 +87,7 @@ def calculate_saved_character(
     character_id: int, req: schemas.CharacterRunRequest, db: Session = Depends(get_db)
 ):
     sheet = crud.character_read(_get_or_404(db, character_id))
-    return _calculate(sheet, req.toggles, req.ac_list)
+    return calculate_round(sheet, req.toggles, req.ac_list)
 
 
 @router.post(

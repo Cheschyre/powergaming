@@ -582,6 +582,7 @@ export interface components {
             /** Attacks */
             attacks: components["schemas"]["AttackEntry"][];
             once_per_turn: components["schemas"]["OncePerTurn"] | null;
+            power_attack_breakeven: components["schemas"]["PowerAttackBreakeven"] | null;
             /** Results */
             results: components["schemas"]["ACResult"][];
         };
@@ -792,6 +793,7 @@ export interface components {
             /** Notes */
             notes: string[];
             once_per_turn: components["schemas"]["OncePerTurn"] | null;
+            power_attack_breakeven: components["schemas"]["PowerAttackBreakeven"] | null;
             /** Results */
             results: components["schemas"]["ACResult"][];
             /** Strength */
@@ -844,6 +846,25 @@ export interface components {
             chance: number;
             /** Had */
             had: number;
+        };
+        /**
+         * PowerAttackBreakeven
+         * @description Where power attack stops paying off for a character's whole round.
+         *
+         *     It "pays off" at an AC when the round with it deals at least as much as
+         *     the same round without it. `pays_off_up_to`: it pays off at every AC
+         *     from 1 up to `ac`, and not at `ac + 1`. `always`: at every AC 1-30.
+         *     `never`: not even at AC 1. `not_applicable`: no attack in the round can
+         *     use it (no heavy or ranged weapon, or the feat isn't taken yet).
+         */
+        PowerAttackBreakeven: {
+            /** Ac */
+            ac: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pays_off_up_to" | "always" | "never" | "not_applicable";
         };
         /**
          * RoundToggles

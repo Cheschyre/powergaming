@@ -8,6 +8,7 @@ import {
   parseAcList,
 } from "../attacks";
 import {
+  describeBreakeven,
   describeCharacter,
   featsTaken,
   describeWeapons,
@@ -146,6 +147,11 @@ export default function CharacterCard({
       {saved && <p className="notice">{saved}</p>}
       {calculated && (
         <>
+          {calculated.power_attack_breakeven && (
+            <p className="breakeven">
+              {describeBreakeven(calculated.power_attack_breakeven)}
+            </p>
+          )}
           <ul
             className="build-summary derived-attacks"
             aria-label="Derived attacks"

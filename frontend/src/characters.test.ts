@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  breakevenCell,
   canDualWield,
+  describeBreakeven,
   defaultProficiency,
   describeCharacter,
   describeWeapons,
@@ -129,5 +131,33 @@ describe("scores by level (same rule as the server)", () => {
       ],
     });
     expect(featsTaken(rogue)).toEqual(["Elven Accuracy"]);
+  });
+});
+
+describe("power-attack breakeven text", () => {
+  it.each([
+    [
+      { status: "pays_off_up_to", ac: 17 },
+      "Power attack pays off against AC 17 or lower.",
+      "AC 17",
+    ],
+    [
+      { status: "always", ac: null },
+      "Power attack pays off at every AC (1–30).",
+      "Every AC",
+    ],
+    [
+      { status: "never", ac: null },
+      "Power attack never pays off: the round does more without it, even at AC 1.",
+      "Never",
+    ],
+    [
+      { status: "not_applicable", ac: null },
+      "Power attack doesn't apply: no heavy or ranged weapon, or the feat isn't taken yet at this level.",
+      "–",
+    ],
+  ] as const)("%o", (breakeven, sentence, cell) => {
+    expect(describeBreakeven(breakeven)).toBe(sentence);
+    expect(breakevenCell(breakeven)).toBe(cell);
   });
 });

@@ -92,13 +92,41 @@ and endpoints; (2) the sheet's ASI editor; (3) the level view with
 Recharts, loaded on first open so the main bundle stays small; (4) README
 and the release.
 
-### v0.8.0 -- Comparison and charts
+### v0.8.0 -- Comparison and charts -- done
 
-- **Compare side by side:** pick builds and characters and see their
-  damage per round against the same ACs, with a damage-vs-AC chart.
-- **Power-attack view on characters:** the breakeven AC for a character's
-  power attack, using its real numbers.
-- Charts reuse v0.7's Recharts setup.
+Details agreed 2026-11-04; built as agreed.
+
+- **A Compare tab.** Pick up to **4 entries** -- any mix of saved builds
+  and saved characters -- and see their damage per round side by side
+  against a range of ACs (**default 10-25**, editable within 1-30).
+  - Each character entry has its own round toggles (advantage,
+    disadvantage, power attack), so the same character can appear twice,
+    e.g. power attack on vs off. Characters run at their own level.
+  - A line chart (one line per entry, direct end labels, legend, hover
+    tooltip; same palette rules and on-demand loading as v0.7's chart)
+    and a table with every value, marking the best entry at each AC.
+  - Not saved on the server: the last selection is remembered in the
+    browser.
+- **Power-attack breakeven for characters**, for the whole round: power
+  attack "pays off" at an AC when the round with it (-5/+10 on the
+  attacks that can use it) deals at least as much as the same round
+  without it, using the round's other toggles. The breakeven is the
+  highest AC up to which it pays off at every AC from 1 (scanning 1-30).
+  At extreme ACs, where only a natural 20 hits, power attack can come
+  out ahead again; that late "win" doesn't count.
+  - **On the character card**, with power attack ticked: "Power attack
+    pays off against AC 17 or lower" -- or that it pays off at every AC,
+    never pays off, or doesn't apply (no heavy or ranged weapon, or the
+    feat isn't taken yet at this level).
+  - **In the level view:** a "Power attack pays off up to AC" column for
+    every level 1-20.
+  - Computed on the server alongside the existing results.
+
+Built in four parts: (1) backend -- the breakeven on character results
+and level rows; (2) breakeven on the card and in the level view; (3) the
+Compare tab, on a chart component shared with the level view; (4)
+README and the release. The Compare tab uses its existing build and
+character endpoints -- no new comparison API.
 
 ### v0.9.0 -- Martial classes
 
