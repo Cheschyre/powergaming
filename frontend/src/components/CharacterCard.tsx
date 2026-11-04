@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { calculateForCharacter, saveCharacterAsBuild } from "../api";
 import {
   describeAttack,
@@ -9,6 +9,7 @@ import {
 } from "../attacks";
 import {
   describeCharacter,
+  featsTaken,
   describeWeapons,
   type WeaponTable,
 } from "../characters";
@@ -19,6 +20,10 @@ import type {
 } from "../types";
 import CheckboxField from "./CheckboxField";
 import ResultsTable from "./ResultsTable";
+
+// Loaded on first open: the chart library is most of its weight, and only
+// this view needs it.
+const LevelView = lazy(() => import("./LevelView"));
 
 interface CharacterCardProps {
   character: Character;
@@ -47,6 +52,7 @@ export default function CharacterCard({
     useState<CharacterCalculateResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
+  const [showLevels, setShowLevels] = useState(false);
 
   function toggle(changes: Partial<RoundToggles>) {
     setToggles((prev) => ({ ...prev, ...changes }));
@@ -92,7 +98,11 @@ export default function CharacterCard({
       </div>
       <p className="build-summary">
         {describeCharacter(character)} · {describeWeapons(character, weapons)} ·
-        STR {character.strength}, DEX {character.dexterity}
+        STR {character.current_scores.strength}, DEX{" "}
+        {character.current_scores.dexterity}
+        {featsTaken(character).length > 0 && (
+          <> · {featsTaken(character).join(", ")}</>
+        )}
       </p>
 
       <div className="field-grid round-toggles">
@@ -122,6 +132,13 @@ export default function CharacterCard({
         <button onClick={run}>Run</button>
         <button className="secondary" onClick={saveAsBuild}>
           Save as build
+        </button>
+        <button
+          className="secondary"
+          onClick={() => setShowLevels((v) => !v)}
+          aria-expanded={showLevels}
+        >
+          Levels 1–20
         </button>
       </div>
 
@@ -154,6 +171,11 @@ export default function CharacterCard({
             oncePerTurn={calculated.once_per_turn}
           />
         </>
+      )}
+      {showLevels && (
+        <Suspense fallback={<p className="hint">Loading the level view…</p>}>
+          <LevelView character={character} toggles={toggles} />
+        </Suspense>
       )}
     </div>
   );

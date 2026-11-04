@@ -4,6 +4,7 @@
  * "proficient" box starts out right for the class.
  */
 import type {
+  AbilityIncreaseChoice,
   Character,
   CharacterClass,
   CharacterSheet,
@@ -26,6 +27,79 @@ export const FIGHTING_STYLE_LABELS: Record<FightingStyle, string> = {
   two_weapon_fighting:
     "Two-Weapon Fighting (ability modifier on the off-hand attack)",
 };
+
+// 2014 Ability Score Improvement levels -- matches ASI_LEVELS in
+// backend/app/schemas.py (the server validates them).
+export const ASI_LEVELS: Record<CharacterClass, number[]> = {
+  fighter: [4, 6, 8, 12, 14, 16, 19],
+  rogue: [4, 8, 10, 12, 16, 19],
+};
+
+export const ASI_CHOICE_LABELS: Record<AbilityIncreaseChoice, string> = {
+  strength_2: "+2 STR",
+  dexterity_2: "+2 DEX",
+  strength_dexterity: "+1 STR, +1 DEX",
+  elven_accuracy: "Elven Accuracy (+1 DEX)",
+  power_attack_feat: "Power attack feat",
+  other_feat: "Other feat",
+};
+
+/** Feats the engine models -- each can only be taken once. */
+export const MODELED_FEATS: AbilityIncreaseChoice[] = [
+  "elven_accuracy",
+  "power_attack_feat",
+];
+
+const FEAT_NAMES: Partial<Record<AbilityIncreaseChoice, string>> = {
+  elven_accuracy: "Elven Accuracy",
+  power_attack_feat: "Power attack feat",
+};
+
+const SCORE_INCREASES: Record<AbilityIncreaseChoice, [number, number]> = {
+  strength_2: [2, 0],
+  dexterity_2: [0, 2],
+  strength_dexterity: [1, 1],
+  elven_accuracy: [0, 1],
+  power_attack_feat: [0, 0],
+  other_feat: [0, 0],
+};
+
+// An ASI can't raise a score above 20; a score already above it (magic
+// items) stays where it is.
+function raise(score: number, amount: number): number {
+  if (amount === 0 || score >= 20) return score;
+  return Math.min(20, score + amount);
+}
+
+/**
+ * STR and DEX at a level: starting scores plus the choices up to it. The
+ * same rule as the server's (app/character.py) -- used to preview scores
+ * while editing; saved characters also come with `current_scores`.
+ */
+export function scoresAtLevel(
+  sheet: CharacterSheet,
+  level: number,
+): { strength: number; dexterity: number } {
+  let { strength, dexterity } = sheet;
+  const increases = [...(sheet.ability_increases ?? [])].sort(
+    (a, b) => a.level - b.level,
+  );
+  for (const increase of increases) {
+    if (increase.level > level) break;
+    const [str, dex] = SCORE_INCREASES[increase.choice];
+    strength = raise(strength, str);
+    dexterity = raise(dexterity, dex);
+  }
+  return { strength, dexterity };
+}
+
+/** Modeled feats taken by the character's current level. */
+export function featsTaken(sheet: CharacterSheet): string[] {
+  return (sheet.ability_increases ?? [])
+    .filter((i) => i.level <= sheet.level && FEAT_NAMES[i.choice])
+    .sort((a, b) => a.level - b.level)
+    .map((i) => FEAT_NAMES[i.choice]!);
+}
 
 // 2014 Rogue: simple weapons plus these martial ones. Fighters are
 // proficient with everything.
@@ -103,13 +177,15 @@ export function newCharacter(): CharacterSheet {
     sneak_attack_can_trigger: true,
     other_to_hit: 0,
     other_damage: 0,
+    ability_increases: [],
   };
 }
 
-/** A saved character back to an editable sheet (drops id/timestamps). */
+/** A saved character back to an editable sheet (drops id, timestamps and
+ * the server-computed current scores). */
 export function toSheet(character: Character): CharacterSheet {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { id, created_at, updated_at, ...sheet } = character;
+  const { id, created_at, updated_at, current_scores, ...sheet } = character;
   return sheet;
 }
 

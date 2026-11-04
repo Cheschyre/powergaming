@@ -244,6 +244,29 @@ FightingStyle = Literal[
 ]
 Subclass = Literal["none", "champion"]
 
+# 2014 Ability Score Improvement levels.
+ASI_LEVELS: dict[str, tuple[int, ...]] = {
+    "fighter": (4, 6, 8, 12, 14, 16, 19),
+    "rogue": (4, 8, 10, 12, 16, 19),
+}
+
+AbilityIncreaseChoice = Literal[
+    "strength_2",  # +2 STR
+    "dexterity_2",  # +2 DEX
+    "strength_dexterity",  # +1 STR, +1 DEX
+    "elven_accuracy",  # feat: +1 DEX; DEX attacks roll 3d20 with advantage
+    "power_attack_feat",  # feat: GWM / Sharpshooter style -5/+10
+    "other_feat",  # a feat that doesn't change these numbers
+]
+FEAT_CHOICES = ("elven_accuracy", "power_attack_feat")
+
+
+class AbilityIncrease(BaseModel):
+    """What a character took at one Ability Score Improvement level."""
+
+    level: int = Field(..., ge=1, le=20)
+    choice: AbilityIncreaseChoice
+
 
 class WeaponProfile(BaseModel):
     """A weapon's damage and properties -- an SRD weapon, or a custom one."""
@@ -304,13 +327,19 @@ class WeaponChoice(BaseModel):
 
 class CharacterSheet(BaseModel):
     """What the player enters. Everything else (proficiency, attacks per
-    round, Sneak Attack dice, crit range) is derived from the level."""
+    round, Sneak Attack dice, crit range, current ability scores) is
+    derived from the level."""
 
     name: str = Field(..., min_length=1, max_length=100)
     character_class: CharacterClass
     level: int = Field(..., ge=1, le=20)
+    # Starting scores (level 1). Scores at a level add the ability score
+    # improvements taken up to it (see app/character.py).
     strength: int = Field(..., ge=1, le=30)
     dexterity: int = Field(..., ge=1, le=30)
+    # One choice per Ability Score Improvement level, planned ahead or
+    # already taken -- the character's level decides which apply.
+    ability_increases: list[AbilityIncrease] = Field(default_factory=list, max_length=7)
     main_hand: WeaponChoice
     off_hand: WeaponChoice | None = None
     # Wield a versatile main-hand weapon in two hands (its bigger die).
@@ -328,6 +357,7 @@ class CharacterSheet(BaseModel):
 
     @model_validator(mode="after")
     def rules_fit_together(self) -> "CharacterSheet":
+        self._check_ability_increases()
         main = self.main_hand.profile
         if self.character_class != "fighter":
             if self.fighting_style != "none":
@@ -351,6 +381,22 @@ class CharacterSheet(BaseModel):
                         f"({weapon.name} isn't one)."
                     )
         return self
+
+    def _check_ability_increases(self) -> None:
+        allowed = ASI_LEVELS[self.character_class]
+        levels = [i.level for i in self.ability_increases]
+        for level in levels:
+            if level not in allowed:
+                class_name = self.character_class.capitalize()
+                raise ValueError(
+                    f"{class_name}s get Ability Score Improvements at levels "
+                    f"{', '.join(map(str, allowed))} -- not {level}."
+                )
+        if len(set(levels)) != len(levels):
+            raise ValueError("Only one Ability Score Improvement choice per level.")
+        for feat in FEAT_CHOICES:
+            if sum(i.choice == feat for i in self.ability_increases) > 1:
+                raise ValueError("A feat can only be taken once.")
 
 
 class RoundToggles(BaseModel):
@@ -388,12 +434,20 @@ class CharacterCalculateResponse(DerivedRound):
     results: list[ACResult]
 
 
+class AbilityScores(BaseModel):
+    strength: int
+    dexterity: int
+
+
 class CharacterRead(CharacterSheet):
-    """A saved character: the sheet plus its id and timestamps."""
+    """A saved character: the sheet plus its id, timestamps and its
+    current ability scores (starting scores plus increases up to its
+    level -- read-only, not sent back when saving)."""
 
     id: int
     created_at: datetime
     updated_at: datetime
+    current_scores: AbilityScores
 
 
 class CharacterRunRequest(BaseModel):
@@ -411,3 +465,36 @@ class SaveAsBuildRequest(BaseModel):
 
     name: str | None = Field(None, min_length=1, max_length=100)
     toggles: RoundToggles = RoundToggles()
+
+
+MAX_LEVEL_VIEW_ACS = 3
+
+
+class LevelViewOptions(BaseModel):
+    """Target ACs (up to 3) and round toggles for the level 1-20 view."""
+
+    ac_list: list[int] = Field(..., min_length=1, max_length=MAX_LEVEL_VIEW_ACS)
+    toggles: RoundToggles = RoundToggles()
+
+    _ac_in_range = field_validator("ac_list")(_check_ac_list)
+
+
+class CharacterLevelsRequest(LevelViewOptions):
+    """The level view for a sheet that isn't saved."""
+
+    character: CharacterSheet
+
+
+class LevelRow(CharacterCalculateResponse):
+    """The character rebuilt at one level: its round, the results, its
+    scores there, and what changed at this level."""
+
+    level: int
+    strength: int
+    dexterity: int
+    # e.g. ["Extra Attack", "+2 DEX"]; empty when nothing changed.
+    notes: list[str]
+
+
+class CharacterLevelsResponse(BaseModel):
+    rows: list[LevelRow]

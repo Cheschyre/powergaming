@@ -156,6 +156,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/characters/levels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Character Levels
+         * @description The level 1-20 view for an unsaved sheet: the character rebuilt at
+         *     each level and run against up to 3 ACs.
+         */
+        post: operations["character_levels_api_characters_levels_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/characters/{character_id}": {
         parameters: {
             query?: never;
@@ -190,6 +211,26 @@ export interface paths {
         put?: never;
         /** Calculate Saved Character */
         post: operations["calculate_saved_character_api_characters__character_id__calculate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/characters/{character_id}/levels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Saved Character Levels
+         * @description The level 1-20 view for a saved character.
+         */
+        post: operations["saved_character_levels_api_characters__character_id__levels_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -274,6 +315,26 @@ export interface components {
             total_had: number;
             /** Total Had Without Power Attack */
             total_had_without_power_attack: number | null;
+        };
+        /**
+         * AbilityIncrease
+         * @description What a character took at one Ability Score Improvement level.
+         */
+        AbilityIncrease: {
+            /**
+             * Choice
+             * @enum {string}
+             */
+            choice: "strength_2" | "dexterity_2" | "strength_dexterity" | "elven_accuracy" | "power_attack_feat" | "other_feat";
+            /** Level */
+            level: number;
+        };
+        /** AbilityScores */
+        AbilityScores: {
+            /** Dexterity */
+            dexterity: number;
+            /** Strength */
+            strength: number;
         };
         /**
          * AttackEntry
@@ -537,10 +598,36 @@ export interface components {
             toggles: components["schemas"]["RoundToggles"];
         };
         /**
+         * CharacterLevelsRequest
+         * @description The level view for a sheet that isn't saved.
+         */
+        CharacterLevelsRequest: {
+            /** Ac List */
+            ac_list: number[];
+            character: components["schemas"]["CharacterSheet"];
+            /**
+             * @default {
+             *       "advantage": false,
+             *       "disadvantage": false,
+             *       "power_attack": false
+             *     }
+             */
+            toggles: components["schemas"]["RoundToggles"];
+        };
+        /** CharacterLevelsResponse */
+        CharacterLevelsResponse: {
+            /** Rows */
+            rows: components["schemas"]["LevelRow"][];
+        };
+        /**
          * CharacterRead
-         * @description A saved character: the sheet plus its id and timestamps.
+         * @description A saved character: the sheet plus its id, timestamps and its
+         *     current ability scores (starting scores plus increases up to its
+         *     level -- read-only, not sent back when saving).
          */
         CharacterRead: {
+            /** Ability Increases */
+            ability_increases: components["schemas"]["AbilityIncrease"][];
             /**
              * Character Class
              * @enum {string}
@@ -551,6 +638,7 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            current_scores: components["schemas"]["AbilityScores"];
             /** Dexterity */
             dexterity: number;
             /**
@@ -620,9 +708,12 @@ export interface components {
         /**
          * CharacterSheet
          * @description What the player enters. Everything else (proficiency, attacks per
-         *     round, Sneak Attack dice, crit range) is derived from the level.
+         *     round, Sneak Attack dice, crit range, current ability scores) is
+         *     derived from the level.
          */
         CharacterSheet: {
+            /** Ability Increases */
+            ability_increases?: components["schemas"]["AbilityIncrease"][];
             /**
              * Character Class
              * @enum {string}
@@ -685,6 +776,42 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * LevelRow
+         * @description The character rebuilt at one level: its round, the results, its
+         *     scores there, and what changed at this level.
+         */
+        LevelRow: {
+            /** Attacks */
+            attacks: components["schemas"]["AttackEntry"][];
+            /** Dexterity */
+            dexterity: number;
+            /** Level */
+            level: number;
+            /** Notes */
+            notes: string[];
+            once_per_turn: components["schemas"]["OncePerTurn"] | null;
+            /** Results */
+            results: components["schemas"]["ACResult"][];
+            /** Strength */
+            strength: number;
+        };
+        /**
+         * LevelViewOptions
+         * @description Target ACs (up to 3) and round toggles for the level 1-20 view.
+         */
+        LevelViewOptions: {
+            /** Ac List */
+            ac_list: number[];
+            /**
+             * @default {
+             *       "advantage": false,
+             *       "disadvantage": false,
+             *       "power_attack": false
+             *     }
+             */
+            toggles: components["schemas"]["RoundToggles"];
         };
         /**
          * OncePerTurn
@@ -1247,6 +1374,39 @@ export interface operations {
             };
         };
     };
+    character_levels_api_characters_levels_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CharacterLevelsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CharacterLevelsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_character_api_characters__character_id__get: {
         parameters: {
             query?: never;
@@ -1364,6 +1524,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CharacterCalculateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    saved_character_levels_api_characters__character_id__levels_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                character_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LevelViewOptions"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CharacterLevelsResponse"];
                 };
             };
             /** @description Validation Error */

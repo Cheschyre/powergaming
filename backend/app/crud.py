@@ -9,6 +9,7 @@ on their own.
 from sqlalchemy.orm import Session
 
 from app import models, schemas
+from app.character import current_scores
 
 
 def create_build(db: Session, build: schemas.BuildCreate) -> models.Build:
@@ -46,12 +47,13 @@ def _character_columns(sheet: schemas.CharacterSheet) -> dict:
 
 
 def character_read(db_character: models.Character) -> schemas.CharacterRead:
+    sheet = schemas.CharacterSheet(**db_character.sheet, name=db_character.name)
     return schemas.CharacterRead(
-        **db_character.sheet,
-        name=db_character.name,
+        **sheet.model_dump(),
         id=db_character.id,
         created_at=db_character.created_at,
         updated_at=db_character.updated_at,
+        current_scores=current_scores(sheet),
     )
 
 

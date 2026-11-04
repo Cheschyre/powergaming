@@ -55,6 +55,19 @@ describe("CharactersPanel", () => {
     );
   });
 
+  it("shows current scores (not starting ones) and feats taken", async () => {
+    vi.mocked(api.listCharacters).mockResolvedValue([
+      character({
+        dexterity: 15,
+        ability_increases: [{ level: 4, choice: "elven_accuracy" }],
+        current_scores: { strength: 10, dexterity: 16 },
+      }),
+    ]);
+    render(<CharactersPanel />);
+    expect(await screen.findByText("Vex")).toBeInTheDocument();
+    expect(card("Vex")).toHaveTextContent("STR 10, DEX 16 · Elven Accuracy");
+  });
+
   it("runs a character with this round's toggles and shows its derived attacks", async () => {
     vi.mocked(api.calculateForCharacter).mockResolvedValue({
       ...derived,
@@ -83,6 +96,28 @@ describe("CharactersPanel", () => {
     expect(
       within(card("Vex")).getByRole("columnheader", { name: "Sneak Attack" }),
     ).toHaveAttribute("colspan", "2");
+  });
+
+  it("opens the level view from the card", async () => {
+    vi.mocked(api.levelsForCharacter).mockResolvedValue({ rows: [] });
+    const user = userEvent.setup();
+    render(<CharactersPanel />);
+    await screen.findByText("Vex");
+
+    const button = within(card("Vex")).getByRole("button", {
+      name: "Levels 1–20",
+    });
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    await user.click(button);
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    expect(
+      await screen.findByRole("region", { name: "Vex at levels 1 to 20" }),
+    ).toBeInTheDocument();
+    expect(api.levelsForCharacter).toHaveBeenCalledWith(1, [13, 15, 17], {
+      advantage: false,
+      disadvantage: false,
+      power_attack: false,
+    });
   });
 
   it("saves the character's round as a build", async () => {

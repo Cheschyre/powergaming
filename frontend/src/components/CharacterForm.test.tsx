@@ -182,4 +182,92 @@ describe("CharacterForm", () => {
       .click(screen.getByRole("button", { name: "Save character" }));
     expect(await screen.findByText("422: level: too high")).toBeInTheDocument();
   });
+
+  describe("Ability Score Improvements", () => {
+    function asi(level: number) {
+      return within(
+        screen.getByRole("group", { name: "Ability Score Improvements" }),
+      ).getByLabelText(new RegExp(`^Level ${level}( \\(planned\\))?$`));
+    }
+
+    it("shows the class's ASI levels and marks the ones above the current level as planned", async () => {
+      const { user } = setup();
+      const group = screen.getByRole("group", {
+        name: "Ability Score Improvements",
+      });
+      const labels = () =>
+        within(group)
+          .getAllByRole("combobox")
+          .map((c) => (c as HTMLSelectElement).labels?.[0]?.textContent);
+      expect(labels()).toEqual([
+        "Level 4 (planned)",
+        "Level 6 (planned)",
+        "Level 8 (planned)",
+        "Level 12 (planned)",
+        "Level 14 (planned)",
+        "Level 16 (planned)",
+        "Level 19 (planned)",
+      ]);
+      await user.clear(screen.getByLabelText("Level"));
+      await user.type(screen.getByLabelText("Level"), "6");
+      expect(labels().slice(0, 3)).toEqual([
+        "Level 4",
+        "Level 6",
+        "Level 8 (planned)",
+      ]);
+    });
+
+    it("previews the scores at the character's level and saves the choices", async () => {
+      const { user, onSubmit } = setup();
+      await user.clear(screen.getByLabelText("Level"));
+      await user.type(screen.getByLabelText("Level"), "8");
+      await user.selectOptions(asi(4), "strength_2");
+      await user.selectOptions(asi(8), "elven_accuracy");
+      // Starting STR 16 + 2, DEX 14 + 1.
+      expect(
+        screen.getByText("At level 8: STR 18, DEX 15"),
+      ).toBeInTheDocument();
+
+      const sheet = await submit(user, onSubmit);
+      expect(sheet.ability_increases).toEqual([
+        { level: 4, choice: "strength_2" },
+        { level: 8, choice: "elven_accuracy" },
+      ]);
+    });
+
+    it("offers each modeled feat once, and 'None yet' clears a choice", async () => {
+      const { user, onSubmit } = setup();
+      await user.selectOptions(asi(4), "power_attack_feat");
+      const option = within(asi(6)).getByRole("option", {
+        name: /Power attack feat/,
+      });
+      expect(option).toBeDisabled();
+      expect(
+        within(asi(6)).getByRole("option", { name: /Other feat/ }),
+      ).toBeEnabled();
+
+      await user.selectOptions(asi(4), "");
+      expect(
+        within(asi(6)).getByRole("option", { name: /Power attack feat/ }),
+      ).toBeEnabled();
+      expect((await submit(user, onSubmit)).ability_increases).toEqual([]);
+    });
+
+    it("drops choices at levels the new class doesn't get", async () => {
+      const { user, onSubmit } = setup();
+      await user.selectOptions(asi(4), "dexterity_2");
+      await user.selectOptions(asi(6), "strength_2"); // Fighter-only level
+      await user.selectOptions(screen.getByLabelText("Class"), "rogue");
+
+      expect(
+        within(
+          screen.getByRole("group", { name: "Ability Score Improvements" }),
+        ).queryByLabelText(/^Level 6/),
+      ).not.toBeInTheDocument();
+      expect(asi(10)).toHaveValue("");
+      expect((await submit(user, onSubmit)).ability_increases).toEqual([
+        { level: 4, choice: "dexterity_2" },
+      ]);
+    });
+  });
 });
