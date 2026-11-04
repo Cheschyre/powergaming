@@ -72,6 +72,7 @@ describe("CharactersPanel", () => {
     vi.mocked(api.calculateForCharacter).mockResolvedValue({
       ...derived,
       results: [acResult({ once_per_turn: { chance: 0.8775, had: 9.56 } }, 2)],
+      power_attack_breakeven: null,
     });
     const user = userEvent.setup();
     render(<CharactersPanel />);

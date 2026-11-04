@@ -20,6 +20,7 @@ function levelRows(acs: number, withoutPa = false): LevelRow[] {
     strength: 10,
     dexterity: i + 1 >= 4 ? 18 : 16,
     notes: i + 1 === 4 ? ["+2 DEX"] : i + 1 === 5 ? ["Proficiency +3"] : [],
+    power_attack_breakeven: null,
     attacks: [],
     once_per_turn: null,
     results: Array.from({ length: acs }, (_, a) =>

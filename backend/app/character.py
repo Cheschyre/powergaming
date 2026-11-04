@@ -21,10 +21,12 @@ from math import ceil
 from app.schemas import (
     AbilityScores,
     AttackEntry,
+    CharacterCalculateResponse,
     CharacterSheet,
     DerivedRound,
     LevelRow,
     OncePerTurn,
+    PowerAttackBreakeven,
     RoundToggles,
     WeaponChoice,
     WeaponProfile,
@@ -246,6 +248,55 @@ def derive_round(
     return _derive(sheet, toggles, _at_level(sheet, sheet.level if level is None else level))
 
 
+BREAKEVEN_ACS = range(1, 31)
+
+
+def power_attack_breakeven(
+    derived: DerivedRound, toggles: RoundToggles
+) -> PowerAttackBreakeven | None:
+    """The whole round's power-attack breakeven (see PowerAttackBreakeven).
+
+    Scans AC 1-30 upwards and stops at the first AC where the round with
+    power attack deals less than without it. (At extreme ACs, where only a
+    natural 20 hits, the -5 stops mattering and power attack can come out
+    ahead again -- that's not "paying off" in any useful sense, so the
+    scan reports where it first stops.)"""
+    if not toggles.power_attack:
+        return None
+    if not any(a.power_attack for a in derived.attacks):
+        return PowerAttackBreakeven(status="not_applicable")
+    results = compute_ac_results(derived.attacks, list(BREAKEVEN_ACS), derived.once_per_turn)
+    last_paying = None
+    for result in results:
+        if result.total_had + 1e-9 < result.total_had_without_power_attack:
+            break
+        last_paying = result.ac
+    else:
+        return PowerAttackBreakeven(status="always")
+    if last_paying is None:
+        return PowerAttackBreakeven(status="never")
+    return PowerAttackBreakeven(status="pays_off_up_to", ac=last_paying)
+
+
+def _calculate(
+    sheet: CharacterSheet, toggles: RoundToggles, at: _AtLevel, ac_list: list[int]
+) -> CharacterCalculateResponse:
+    derived = _derive(sheet, toggles, at)
+    return CharacterCalculateResponse(
+        **derived.model_dump(),
+        results=compute_ac_results(derived.attacks, ac_list, derived.once_per_turn),
+        power_attack_breakeven=power_attack_breakeven(derived, toggles),
+    )
+
+
+def calculate_round(
+    sheet: CharacterSheet, toggles: RoundToggles, ac_list: list[int]
+) -> CharacterCalculateResponse:
+    """Derive the character's round at its level and run it against
+    ac_list, with its power-attack breakeven."""
+    return _calculate(sheet, toggles, _at_level(sheet, sheet.level), ac_list)
+
+
 def level_notes(sheet: CharacterSheet, level: int) -> list[str]:
     """What changes at this level, for the level view's rows."""
     notes = []
@@ -274,12 +325,9 @@ def level_rows(sheet: CharacterSheet, toggles: RoundToggles, ac_list: list[int])
     rows = []
     for level in range(1, 21):
         at = _at_level(sheet, level)
-        derived = _derive(sheet, toggles, at)
-        results = compute_ac_results(derived.attacks, ac_list, derived.once_per_turn)
         rows.append(
             LevelRow(
-                **derived.model_dump(),
-                results=results,
+                **_calculate(sheet, toggles, at, ac_list).model_dump(),
                 level=level,
                 strength=at.strength,
                 dexterity=at.dexterity,

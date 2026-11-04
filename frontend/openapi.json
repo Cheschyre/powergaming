@@ -614,6 +614,16 @@
               }
             ]
           },
+          "power_attack_breakeven": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PowerAttackBreakeven"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "results": {
             "items": {
               "$ref": "#/components/schemas/ACResult"
@@ -625,7 +635,8 @@
         "required": [
           "attacks",
           "once_per_turn",
-          "results"
+          "results",
+          "power_attack_breakeven"
         ],
         "title": "CharacterCalculateResponse",
         "type": "object"
@@ -1055,6 +1066,16 @@
               }
             ]
           },
+          "power_attack_breakeven": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PowerAttackBreakeven"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "results": {
             "items": {
               "$ref": "#/components/schemas/ACResult"
@@ -1071,6 +1092,7 @@
           "attacks",
           "once_per_turn",
           "results",
+          "power_attack_breakeven",
           "level",
           "strength",
           "dexterity",
@@ -1158,6 +1180,38 @@
           "had"
         ],
         "title": "OncePerTurnResult",
+        "type": "object"
+      },
+      "PowerAttackBreakeven": {
+        "description": "Where power attack stops paying off for a character's whole round.\n\nIt \"pays off\" at an AC when the round with it deals at least as much as\nthe same round without it. `pays_off_up_to`: it pays off at every AC\nfrom 1 up to `ac`, and not at `ac + 1`. `always`: at every AC 1-30.\n`never`: not even at AC 1. `not_applicable`: no attack in the round can\nuse it (no heavy or ranged weapon, or the feat isn't taken yet).",
+        "properties": {
+          "ac": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ac"
+          },
+          "status": {
+            "enum": [
+              "pays_off_up_to",
+              "always",
+              "never",
+              "not_applicable"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "ac"
+        ],
+        "title": "PowerAttackBreakeven",
         "type": "object"
       },
       "RoundToggles": {

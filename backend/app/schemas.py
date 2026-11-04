@@ -430,8 +430,25 @@ class CharacterCalculateRequest(CharacterDeriveRequest):
     _ac_in_range = field_validator("ac_list")(_check_ac_list)
 
 
+class PowerAttackBreakeven(BaseModel):
+    """Where power attack stops paying off for a character's whole round.
+
+    It "pays off" at an AC when the round with it deals at least as much as
+    the same round without it. `pays_off_up_to`: it pays off at every AC
+    from 1 up to `ac`, and not at `ac + 1`. `always`: at every AC 1-30.
+    `never`: not even at AC 1. `not_applicable`: no attack in the round can
+    use it (no heavy or ranged weapon, or the feat isn't taken yet)."""
+
+    status: Literal["pays_off_up_to", "always", "never", "not_applicable"]
+    ac: int | None = None
+
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+
 class CharacterCalculateResponse(DerivedRound):
     results: list[ACResult]
+    # Null when the round's power attack toggle is off.
+    power_attack_breakeven: PowerAttackBreakeven | None = None
 
 
 class AbilityScores(BaseModel):

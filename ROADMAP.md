@@ -111,7 +111,9 @@ Details agreed 2026-11-04.
   attack "pays off" at an AC when the round with it (-5/+10 on the
   attacks that can use it) deals at least as much as the same round
   without it, using the round's other toggles. The breakeven is the
-  highest AC (1-30) where it still pays off.
+  highest AC up to which it pays off at every AC from 1 (scanning 1-30).
+  At extreme ACs, where only a natural 20 hits, power attack can come
+  out ahead again; that late "win" doesn't count.
   - **On the character card**, with power attack ticked: "Power attack
     pays off against AC 17 or lower" -- or that it pays off at every AC,
     never pays off, or doesn't apply (no heavy or ranged weapon, or the
