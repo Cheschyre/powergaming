@@ -92,9 +92,9 @@ and endpoints; (2) the sheet's ASI editor; (3) the level view with
 Recharts, loaded on first open so the main bundle stays small; (4) README
 and the release.
 
-### v0.8.0 -- Comparison and charts
+### v0.8.0 -- Comparison and charts -- done
 
-Details agreed 2026-11-04.
+Details agreed 2026-11-04; built as agreed.
 
 - **A Compare tab.** Pick up to **4 entries** -- any mix of saved builds
   and saved characters -- and see their damage per round side by side
@@ -122,9 +122,11 @@ Details agreed 2026-11-04.
     every level 1-20.
   - Computed on the server alongside the existing results.
 
-Build order: (1) backend -- the breakeven on character results and level
-rows; (2) breakeven on the card and in the level view; (3) the Compare
-tab; (4) README and the release.
+Built in four parts: (1) backend -- the breakeven on character results
+and level rows; (2) breakeven on the card and in the level view; (3) the
+Compare tab, on a chart component shared with the level view; (4)
+README and the release. The Compare tab uses its existing build and
+character endpoints -- no new comparison API.
 
 ### v0.9.0 -- Martial classes
 

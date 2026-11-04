@@ -10,7 +10,9 @@ power attack breakeven finder. Builds
 can be saved and re-run against new target ACs without re-entering every
 field, and characters (2014 Fighter or Rogue) can be entered as a mini
 character sheet that works out their attacks for you -- at their level,
-or at every level 1-20 with a damage chart.
+or at every level 1-20 with a damage chart, including where power attack
+stops paying off. The Compare tab puts up to 4 builds and characters side
+by side against a range of ACs.
 
 The original CLI script is now a full app with a versioned
 frontend/backend, a test environment, and a production environment on
@@ -57,7 +59,8 @@ powergaming/
 │   │   ├── api.ts             # fetch wrapper, one function per endpoint
 │   │   ├── App.tsx            # tab switcher
 │   │   ├── characters.ts      # character sheet helpers (defaults, proficiency, ASIs)
-│   │   └── components/        # CalculatorPanel, BuildsPanel, CharactersPanel, LevelView, ...
+│   │   ├── chartColors.ts     # validated chart palette for the dark surface
+│   │   └── components/        # CalculatorPanel, BuildsPanel, CharactersPanel, LevelView, ComparePanel, ...
 │   ├── vite.config.ts
 │   └── package.json
 ├── .github/
@@ -356,6 +359,17 @@ melee or ranged weapons).
   replaces the whole sheet (its rules span fields, so it's validated as
   one unit).
 - `POST /api/characters/{id}/calculate` `{ac_list, toggles}`.
+
+Character calculate responses (and level-view rows) include
+`power_attack_breakeven` when the power attack toggle is on (else
+`null`): `{"status": "pays_off_up_to", "ac": 17}` means the round with
+power attack deals at least as much as without it at every AC from 1 to
+17, but not at 18. Other statuses: `always` (all of AC 1-30), `never`
+(already behind at AC 1), `not_applicable` (no heavy or ranged weapon,
+or the power attack feat isn't taken yet at that level). The scan stops
+where power attack first falls behind; its late "win" at extreme ACs,
+where only a natural 20 hits, doesn't count.
+
 - `POST /api/characters/{id}/save-as-build` `{name?, toggles}` -- saves
   the derived round as a build (default name "Vex (level 5)"); a
   snapshot that later character edits don't change.
